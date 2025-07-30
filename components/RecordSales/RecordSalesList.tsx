@@ -1,3 +1,5 @@
+'use client'
+
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption, TableFooter } from "@/components/ui/table"
 import { Card } from "../ui/card"
 import { OpenSale, VivoSalesHeader } from "@/types"
@@ -9,6 +11,7 @@ import { CreateNewSaleForm } from "./CreateNewSaleForm"
 import { RecordNewSale } from "./RecordNewSale"
 import CreateNewHeader from "./CreateNewHeader"
 import CreateNewHeaderCopy from "./CreateNewHeaderCopy"
+import PendingRecordSalesViewWrapper from "./PendingRecordSalesViewWrapper"
 
 
 
@@ -22,12 +25,14 @@ export function RecordSalesList({ data }: { data: VivoSalesHeader[] }) {
            <CreateNewHeaderCopy />
           {/* <RecordNewSale /> */}
             </div>
-            <Card className="mt-4 bg-transparent">
+            <Card className="mt-4 bg-transparent h-[80vh] overflow-y-auto overflow-x-auto">
                <Table>
                   <TableCaption>Sales records for {data && data[0]?.Outlet_Name}</TableCaption>
                   <TableHeader>
                      <TableRow>
-                        <TableHead className="w-[100px]">No</TableHead>
+                     <TableHead className="w-[100px]">No
+                  
+                        </TableHead>
                      {/* <TableHead>Outlet Code</TableHead> */}
                      <TableHead>Outlet Name</TableHead>
                      {/* <TableHead>Region Code</TableHead> */}
@@ -50,7 +55,9 @@ export function RecordSalesList({ data }: { data: VivoSalesHeader[] }) {
                      )}
                      {data.map((sale) => (
                         <TableRow key={sale.No}>
-                           <TableCell className="font-medium">{sale.No}</TableCell>
+                           <TableCell className="font-medium">
+                              <PendingRecordSalesViewWrapper No={sale.No} />
+                           </TableCell>
                            {/* <TableCell>{sale.Outlet_Code}</TableCell> */}
                            <TableCell>{sale.Outlet_Name}</TableCell>
                            {/* <TableCell>{sale.Region_Code}</TableCell> */}
