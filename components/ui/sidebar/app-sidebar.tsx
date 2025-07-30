@@ -40,11 +40,11 @@ export function AppSidebar() {
       }
    }, []);
 
-   useEffect(() => {
-      if (!loggedInUser) {
-         router.push("/login");
-      }
-   }, [loggedInUser, router]);
+   // useEffect(() => {
+   //    if (!loggedInUser) {
+   //       router.push("/login");
+   //    }
+   // }, [loggedInUser, router]);
 
    const handleLogout = () => {
       if (typeof document !== "undefined") {
