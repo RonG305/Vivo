@@ -15,9 +15,9 @@ export default async function VivoUserDetails() {
     );
   }
   return (
-    <Card className='p-4'>
+      <Card className="mt-4 bg-transparent p-4">
       <div>
-        <h2 className='text-xl font-medium'>Profile Details</h2>
+        <h2 className='text-xl font-medium mb-4'>Profile Details</h2>
       </div>
       <div className="grid grid-cols-2 lg:grid-cols-3 gap-4">
         <div>

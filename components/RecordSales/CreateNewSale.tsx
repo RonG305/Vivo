@@ -23,7 +23,6 @@ export async function CreateNewSale() {
          </div>
       );
    }
-   console.log("User Data: ", user);
 
    return (
       <Dialog>

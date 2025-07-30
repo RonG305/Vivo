@@ -17,6 +17,24 @@ export interface OpenSale {
   Actual_Date: string; 
 }
 
+
+
+export interface VivoSalesHeader {
+  "@odata.etag": string;
+  No: string;
+  Date_Captured: string;
+  Time_Captured: string;
+  Sales_Date: string;
+  Region_Code: string;
+  Region_Name: string;
+  Outlet_Code: string;
+  Outlet_Name: string;
+  Total_Target: number;
+  Total_Achieved: number;
+  Total_Commission_Earned: number;
+  Status: string;
+}
+
 export interface VivoUser {
   "@odata.etag": string;
   Bitsn_UserName: string;

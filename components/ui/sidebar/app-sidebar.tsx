@@ -14,12 +14,42 @@ import { VIVO_LOGO } from "@/lib/constants"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "../../ui/collapsible"
 import sidebarItems from "./sidebar-items"
 import { Button } from "../button"
+import { useRouter } from "next/navigation"
+import { useEffect, useState } from "react"
 
-const handleLogout = () => {
-  console.log("Logout clicked");
-   
-}
+
+
+
 export function AppSidebar() {
+   const [loading, setLoading] = useState(false)
+   const router = useRouter();
+
+   const [loggedInUser, setLoggedInUser] = useState(() => {
+      const userCookie = document.cookie.split('; ').find(row => row.startsWith('vivoUser='));
+      if (userCookie) {
+         const userData = userCookie.split('=')[1];
+         return userData ? JSON.parse(decodeURIComponent(userData)) : null;
+      }
+      return null;
+   });
+
+   useEffect(() => {
+      if (!loggedInUser) {
+         router.push('/login');
+      }
+   }, [loggedInUser, router]);
+
+
+   const handleLogout = () => {
+      document.cookie = 'vivoUser=; Max-Age=0; path=/';
+      setLoading(true);
+      setLoggedInUser(null);
+      setTimeout(() => {
+         router.push('/login');
+      }, 3000);
+   };
+
+
    return (
       <Sidebar collapsible="icon">
          <SidebarContent>
@@ -63,7 +93,9 @@ export function AppSidebar() {
                      </Collapsible>
                   ))}
                </SidebarGroupContent>
-               <Button onClick={handleLogout} variant={"destructive"}>Logout</Button>
+               <Button
+                  className="cursor-pointer mt-4"
+                  onClick={handleLogout} variant={"destructive"}>{loading ? 'Redirecting...' : 'Logout'}</Button>
             </SidebarGroup>
          </SidebarContent>
       </Sidebar>

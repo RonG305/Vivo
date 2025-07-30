@@ -10,7 +10,7 @@ import {
 import { IndividualTarget, ProductSKU, VivoProduct, VivoUserSessionDetails } from '@/types'
 import { Button } from '../ui/button'
 import { Input } from '../ui/input'
-import { Trash2Icon } from 'lucide-react'
+import { MinusCircle, PlusCircle, Trash2Icon } from 'lucide-react'
 
 export function IndividualTargetsForm({
    targets,
@@ -25,7 +25,7 @@ export function IndividualTargetsForm({
 }) {
    const [targetRows, setTargetRows] = useState(() =>
       targets.map(() => [
-         { productCode: '', sku: null as ProductSKU | null, quantity: 0 }
+         { productCode: '', sku: null as ProductSKU | null, quantity: 0, cummulative_total: 0 }
       ])
    )
 
@@ -34,7 +34,7 @@ export function IndividualTargetsForm({
          const updated = [...prev]
          updated[targetIndex] = [
             ...updated[targetIndex],
-            { productCode: '', sku: null, quantity: 0 }
+            { productCode: '', sku: null, quantity: 0, cummulative_total: 0 }
          ]
          return updated
       })
@@ -51,7 +51,7 @@ export function IndividualTargetsForm({
    const updateRow = (
       targetIndex: number,
       rowIndex: number,
-      field: 'productCode' | 'sku' | 'quantity',
+      field: 'productCode' | 'sku' | 'quantity' | 'cummulative_total',
       value: any
    ) => {
       setTargetRows(prev => {
@@ -64,10 +64,13 @@ export function IndividualTargetsForm({
             row.productCode = value
          } else if (field === 'quantity') {
             row.quantity = Number(value)
+         } else if (field === 'cummulative_total') {
+            row.cummulative_total = Number(value)
          }
          return updated
       })
    }
+
 
    return (
       <Card className="mt-4 bg-transparent p-4">
@@ -78,12 +81,13 @@ export function IndividualTargetsForm({
                   <TableHead>Name</TableHead>
                   <TableHead>Role</TableHead>
                   <TableHead>Product</TableHead>
-                  <TableHead>Target (Litres)</TableHead>
+                  <TableHead>Target (Ltrs)</TableHead>
                   <TableHead>SKU</TableHead>
-                  <TableHead>SKU (Litres)</TableHead>
+                  <TableHead>SKU (Ltrs)</TableHead>
                   <TableHead>Grade</TableHead>
                   <TableHead>Qty</TableHead>
-                  <TableHead>Total (L)</TableHead>
+                  <TableHead>Total (Ltrs)</TableHead>
+                  <TableHead>Cummulative Total (Ltrs)</TableHead>
                   <TableHead>Variance</TableHead>
                   <TableHead>Actions</TableHead>
                </TableRow>
@@ -93,45 +97,56 @@ export function IndividualTargetsForm({
                   const userRows = targetRows[targetIndex]
 
                   return userRows.map((row, rowIndex) => {
-                     const totalLitres = row.sku ? row.sku.SKU_Litres * row.quantity : 0
-                     const variance = totalLitres - target.Daily_Target
+                     const totalLtrs = row.sku ? row.sku.SKU_Litres * row.quantity : 0
+                     const cumulativeTotalLitres = targetRows.flat().reduce((sum, row) => {
+                        return sum + (row.sku ? row.sku.SKU_Litres * row.quantity : 0);
+                     }, 0);
+
+                     const variance = cumulativeTotalLitres - target.Daily_Target
+                     const defaultProduct = products?.find(p => p.Description === 'Retail Lubricants ') || null;
+                     console.log('defaultProduct', defaultProduct)
 
                      return (
                         <TableRow key={`${targetIndex}-${rowIndex}`}>
                            {rowIndex === 0 && (
                               <>
-                                 <TableCell rowSpan={userRows.length} className="font-medium">
+                                 <TableCell rowSpan={userRows.length} className="font-medium w-[200px]">
                                     {target.User_Name}
                                  </TableCell>
                                  <TableCell rowSpan={userRows.length}>
                                     {target.Role_Name}
                                  </TableCell>
+
+                                 <TableCell rowSpan={userRows.length}>
+                                    <Select
+                                       value={row.productCode}
+                                       defaultValue={String(defaultProduct?.Description )|| ''}
+                                       onValueChange={(val) => updateRow(targetIndex, rowIndex, 'productCode', val)}
+                                    >
+                                       <SelectTrigger className="w-[160px]">
+                                          <SelectValue placeholder="Select Product" />
+                                       </SelectTrigger>
+                                       <SelectContent>
+                                          <SelectGroup>
+                                             {products?.map(p => (
+                                                <SelectItem key={p.Code} value={p.Code}>
+                                                   {p.Description}
+                                                </SelectItem>
+                                             ))}
+                                          </SelectGroup>
+                                       </SelectContent>
+                                    </Select>
+                                 </TableCell>
+                                 <TableCell rowSpan={userRows.length}>{target.Daily_Target.toFixed(2)}</TableCell>
                               </>
                            )}
-                           <TableCell>
-                              <Select
-                                 value={row.productCode}
-                                 onValueChange={(val) => updateRow(targetIndex, rowIndex, 'productCode', val)}
-                              >
-                                 <SelectTrigger className="w-[160px]">
-                                    <SelectValue placeholder="Product" />
-                                 </SelectTrigger>
-                                 <SelectContent>
-                                    <SelectGroup>
-                                       {products?.map(p => (
-                                          <SelectItem key={p.Code} value={p.Code}>
-                                             {p.Description}
-                                          </SelectItem>
-                                       ))}
-                                    </SelectGroup>
-                                 </SelectContent>
-                              </Select>
-                           </TableCell>
-                           <TableCell>{target.Daily_Target.toFixed(2)}</TableCell>
+
+
                            <TableCell>
                               <Select
                                  value={row.sku?.SKU_Code ?? ''}
                                  onValueChange={(val) => updateRow(targetIndex, rowIndex, 'sku', val)}
+                                 
                               >
                                  <SelectTrigger className="w-[160px] mt-2">
                                     <SelectValue placeholder="SKU" />
@@ -151,14 +166,14 @@ export function IndividualTargetsForm({
                               <Input
                                  value={row.sku?.SKU_Litres ?? ''}
                                  readOnly
-                                 className="bg-muted"
+                                 className="bg-muted w-[120px]"
                               />
                            </TableCell>
-                           <TableCell>
+                           <TableCell className='w-[200px]'>
                               <Input
                                  value={row.sku?.Grade ?? ''}
                                  readOnly
-                                 className="bg-muted"
+                                 className="bg-muted w-[120px]"
                               />
                            </TableCell>
                            <TableCell>
@@ -166,29 +181,43 @@ export function IndividualTargetsForm({
                                  type="number"
                                  value={row.quantity}
                                  onChange={(e) => updateRow(targetIndex, rowIndex, 'quantity', e.target.value)}
+                                 className='w-[120px]'
                               />
                            </TableCell>
                            <TableCell>
-                              <Input value={totalLitres.toFixed(2)} readOnly className="bg-muted" />
+                              <Input value={totalLtrs.toFixed(2)} readOnly className="bg-muted w-[120px]" />
                            </TableCell>
-                           <TableCell>
-                              <Input value={variance.toFixed(2)} readOnly className="bg-muted" />
-                           </TableCell>
-                           <TableCell className="flex gap-2">
-                              <Button
-                                 variant="outline"
-                                 size="sm"
+                           {rowIndex === 0 && (
+                              <>
+                                 <TableCell rowSpan={userRows.length}>
+                                    <Input
+                                      
+                                       value={cumulativeTotalLitres.toFixed(2)} readOnly className="bg-muted w-[120px]" />
+                                 </TableCell>
+                                 <TableCell rowSpan={userRows.length}>
+                                    <Input
+                                       onChange={(e) => updateRow(targetIndex, rowIndex, 'cummulative_total', e.target.value)}
+                                       value={variance} readOnly className="bg-muted w-[120px]" />
+                                 </TableCell>
+                              </>
+                           )}
+
+
+                           <TableCell className="flex items-center gap-2">
+                              <PlusCircle
+                                 className='text-primary cursor-pointer'
+                                 size={20}
                                  onClick={() => addRow(targetIndex)}
                               >
                                  Add
-                              </Button>
+                              </PlusCircle>
                               {userRows.length > 1 && (
                                  <Button
                                     variant="ghost"
                                     size="icon"
                                     onClick={() => removeRow(targetIndex, rowIndex)}
                                  >
-                                    <Trash2Icon className="w-4 h-4 text-red-500" />
+                                    <MinusCircle size={20} className=" text-red-500 cursor-pointer" />
                                  </Button>
                               )}
                            </TableCell>

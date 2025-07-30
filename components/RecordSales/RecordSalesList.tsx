@@ -1,26 +1,26 @@
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption, TableFooter } from "@/components/ui/table"
 import { Card } from "../ui/card"
-import { OpenSale } from "@/types"
+import { OpenSale, VivoSalesHeader } from "@/types"
 import { Badge } from "../ui/badge"
 import { CreateNewSale } from "./CreateNewSale"
 import { Button } from "../ui/button"
 import Link from "next/link"
+import { CreateNewSaleForm } from "./CreateNewSaleForm"
+import { RecordNewSale } from "./RecordNewSale"
+import CreateNewHeader from "./CreateNewHeader"
+import CreateNewHeaderCopy from "./CreateNewHeaderCopy"
 
 
 
 
-export function RecordSalesList({ data }: { data: OpenSale[] }) {
-   const totalCommission = data.reduce((sum, item) => sum + (item.Total_Commission_Value || 0), 0)
-   const totalSales = data.reduce((sum, item) => sum + (item.Total_Sales_in_Liters || 0), 0)
-   const totalTarget = data.reduce((sum, item) => sum + (item.Total_Target || 0), 0)
+export function RecordSalesList({ data }: { data: VivoSalesHeader[] }) {
 
    return (
       <div>
          <div className='flex items-center justify-between mb-4'>
             <h2 className='font-medium text-xl'>Record Sales</h2>
-            <Link href="/dashboard/record-sales/new-sale">
-               <Button>Add New</Button>
-               </Link>
+           <CreateNewHeaderCopy />
+          {/* <RecordNewSale /> */}
             </div>
             <Card className="mt-4 bg-transparent">
                <Table>
@@ -28,13 +28,15 @@ export function RecordSalesList({ data }: { data: OpenSale[] }) {
                   <TableHeader>
                      <TableRow>
                         <TableHead className="w-[100px]">No</TableHead>
-                        <TableHead>Outlet</TableHead>
-                        <TableHead>Region</TableHead>
-                        <TableHead>Date</TableHead>
-                        <TableHead>Time</TableHead>
+                     {/* <TableHead>Outlet Code</TableHead> */}
+                     <TableHead>Outlet Name</TableHead>
+                     {/* <TableHead>Region Code</TableHead> */}
+                        <TableHead>Region Name</TableHead>
+                        <TableHead>Date Captured</TableHead>
+                        <TableHead>Time Captured</TableHead>
                         <TableHead className="text-right">Target (Ltrs)</TableHead>
-                        <TableHead className="text-right">Actual (Ltrs)</TableHead>
-                        <TableHead className="text-right">Commission (KES)</TableHead>
+                        <TableHead className="text-right">Achieved (Ltrs)</TableHead>
+                        <TableHead className="text-right">Commission Earned (KES)</TableHead>
                         <TableHead>Status</TableHead>
                      </TableRow>
                   </TableHeader>
@@ -49,15 +51,17 @@ export function RecordSalesList({ data }: { data: OpenSale[] }) {
                      {data.map((sale) => (
                         <TableRow key={sale.No}>
                            <TableCell className="font-medium">{sale.No}</TableCell>
+                           {/* <TableCell>{sale.Outlet_Code}</TableCell> */}
                            <TableCell>{sale.Outlet_Name}</TableCell>
+                           {/* <TableCell>{sale.Region_Code}</TableCell> */}
                            <TableCell>{sale.Region_Name}</TableCell>
-                           <TableCell>{sale.Actual_Date}</TableCell>
-                           <TableCell>{sale.Sales_Time}</TableCell>
-                           <TableCell className="text-right">{(sale.Total_Target).toFixed(3)}</TableCell>
-                           <TableCell className="text-right">{(sale.Total_Sales_in_Liters).toFixed(3)}</TableCell>
-                           <TableCell className="text-right">{(sale.Total_Commission_Value).toFixed(3)}</TableCell>
+                           <TableCell>{sale.Date_Captured}</TableCell>
+                           <TableCell>{sale.Time_Captured}</TableCell>
+                           <TableCell className="text-right">{(sale?.Total_Target)}</TableCell>
+                           <TableCell className="text-right">{(sale?.Total_Target)}</TableCell>
+                           <TableCell className="text-right">{(sale?.Total_Commission_Earned)}</TableCell>
                            <TableCell>
-                              <Badge variant={sale.Status === "Open" ? "secondary" : "destructive"}>
+                              <Badge variant={sale?.Status === "Open" ? "secondary" : "destructive"}>
                                  {sale.Status}
                               </Badge>
                            </TableCell>
@@ -68,16 +72,17 @@ export function RecordSalesList({ data }: { data: OpenSale[] }) {
                      <TableFooter>
                         <TableRow>
                            <TableCell colSpan={5}>Totals</TableCell>
-                           <TableCell className="text-right">{totalTarget.toFixed(2)}</TableCell>
+                           {/* <TableCell className="text-right">{totalTarget.toFixed(2)}</TableCell>
                            <TableCell className="text-right">{totalSales.toFixed(2)}</TableCell>
-                           <TableCell className="text-right">{totalCommission.toFixed(2)}</TableCell>
+                           <TableCell className="text-right">{totalCommission.toFixed(2)}</TableCell> */}
                            <TableCell></TableCell>
                         </TableRow>
                      </TableFooter>
                   )}
 
                </Table>
-            </Card>
+         </Card>
+         <CreateNewHeader />
          </div>
      
    )

@@ -12,15 +12,19 @@ const sidebarItems = [
     children: [
       {
         title: "Record Sales",
-        url: '/dashboard/record-sales',
+        url: "/dashboard/record-sales",
+      },
+      {
+        title: "Pending Sales",
+        url: "/dashboard/pending-sales",
       },
       {
         title: "Approved Sales",
-       url: '/approved-sales',
+        url: "/dashboard/approved-sales",
       },
       {
         title: "Rejected",
-        url: '/rejected-sales',
+        url: "/dashboard/rejected-sales",
       },
     ],
   },
@@ -30,11 +34,11 @@ const sidebarItems = [
       icon: "solar:pie-chart-linear",
       className: "w-6 h-6",
     }),
-    
+
     children: [
       {
         title: "Performance",
-        url: '/performance-reports',
+        url: "/performance-reports",
       },
     ],
   },
@@ -47,44 +51,43 @@ const sidebarItems = [
     children: [
       {
         title: "CSAs",
-      url: '/csas',
+        url: "/csas",
       },
       {
         title: "Mechanics",
-      url: '/mechanics',
+        url: "/mechanics",
       },
       {
         title: "Oil Specialists",
-      url: '/oil-specialists',
+        url: "/oil-specialists",
       },
       {
         title: "Shop Attendants",
-       url: '/shop-attendants',
+        url: "/shop-attendants",
       },
       {
         title: "Quality Marshalls",
-        url: '/quality-marshalls'
+        url: "/quality-marshalls",
       },
       {
         title: "Dealer",
-       url: '/dealers'
+        url: "/dealers",
       },
       {
         title: "Customer Champion",
-        url: '/customer-champions',
-       
+        url: "/customer-champions",
       },
       {
         title: "Assistant Accountant",
-        url: '/assistant-accountants',
+        url: "/assistant-accountants",
       },
       {
         title: "Accountant",
-        url: '/accountants',
+        url: "/accountants",
       },
       {
         title: "Assistant Manager",
-        url: '/assistant-managers',
+        url: "/assistant-managers",
       },
     ],
   },
@@ -97,7 +100,7 @@ const sidebarItems = [
     children: [
       {
         title: "Targets",
-        url: '/targets',
+        url: "/targets",
       },
     ],
   },
@@ -107,17 +110,16 @@ const sidebarItems = [
       icon: "solar:user-rounded-linear",
       className: "w-6 h-6",
     }),
-   
+
     children: [
       {
         title: "My Profile",
-        url: '/my-profile',
+        url: "/my-profile",
       },
       {
         title: "Change Password",
-        url: '/change-password',
+        url: "/change-password",
       },
-     
     ],
   },
 ] as const;

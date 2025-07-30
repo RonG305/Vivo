@@ -36,9 +36,11 @@ export const createData = async (
       method: "POST",
       headers: {
         "Content-Type": "application/json",
+        ...{ Authorization: `${API_AUTHORIZATION}` },
+        ...(options?.headers || {}),
       },
       body: JSON.stringify(data),
-      ...options,
+      
     });
 
     if (!response.ok)

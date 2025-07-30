@@ -1,6 +1,7 @@
 
 import { API_AUTHORIZATION, API_BASE_URL } from "@/lib/constants";
 import { VivoUser } from "@/types";
+import { useEffect } from "react";
 
 interface LoginResponse {
   "@odata.context": string;
@@ -11,7 +12,6 @@ interface LoginResponse {
 export const loginUser = async (username: string, password: string) => {
   try {  
     const url = `${API_BASE_URL}/Vivousers?$filter=Bitsn_UserName eq '${username}'`;
-
     const response = await fetch(url, {
       method: "GET",
       headers: {
@@ -45,6 +45,7 @@ export const loginUser = async (username: string, password: string) => {
 
 export const storeUserData = (userData: VivoUser) => {
   const authData = {
+    "@odata.etag": userData["@odata.etag"], 
     username: userData.Bitsn_UserName,
     name: userData.Name,
     role: userData.Role_Name,
@@ -55,11 +56,24 @@ export const storeUserData = (userData: VivoUser) => {
     token: btoa(`${userData.Bitsn_UserName}:${userData.Password}`),
   };
 
-
-  document.cookie = `vivoUser=${encodeURIComponent(
+  useEffect(() => {
+ document.cookie = `vivoUser=${encodeURIComponent(
     JSON.stringify(authData)
   )}; path=/; max-age=${7 * 24 * 60 * 60};`;
+  }, [])
 
+
+  // document.cookie = `vivoUser=${encodeURIComponent(
+  //   JSON.stringify(authData)
+  // )}; path=/; max-age=${7 * 24 * 60 * 60};`;
+ if (typeof window !== "undefined") {
+   document.cookie = `vivoUser=${encodeURIComponent(
+     JSON.stringify(authData)
+   )}; path=/; max-age=${7 * 24 * 60 * 60};`;
+
+   localStorage.setItem("vivoUser", JSON.stringify(authData));
+   sessionStorage.setItem("vivoUserData", JSON.stringify(userData));
+ }
   localStorage.setItem("vivoUser", JSON.stringify(authData));
   sessionStorage.setItem("vivoUserData", JSON.stringify(userData));
 };
