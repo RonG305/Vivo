@@ -1,7 +1,6 @@
 
 import { API_AUTHORIZATION, API_BASE_URL } from "@/lib/constants";
 import { VivoUser } from "@/types";
-import { useEffect } from "react";
 
 interface LoginResponse {
   "@odata.context": string;
@@ -56,24 +55,11 @@ export const storeUserData = (userData: VivoUser) => {
     token: btoa(`${userData.Bitsn_UserName}:${userData.Password}`),
   };
 
-  useEffect(() => {
- document.cookie = `vivoUser=${encodeURIComponent(
+
+  document.cookie = `vivoUser=${encodeURIComponent(
     JSON.stringify(authData)
   )}; path=/; max-age=${7 * 24 * 60 * 60};`;
-  }, [])
 
-
-  // document.cookie = `vivoUser=${encodeURIComponent(
-  //   JSON.stringify(authData)
-  // )}; path=/; max-age=${7 * 24 * 60 * 60};`;
- if (typeof window !== "undefined") {
-   document.cookie = `vivoUser=${encodeURIComponent(
-     JSON.stringify(authData)
-   )}; path=/; max-age=${7 * 24 * 60 * 60};`;
-
-   localStorage.setItem("vivoUser", JSON.stringify(authData));
-   sessionStorage.setItem("vivoUserData", JSON.stringify(userData));
- }
   localStorage.setItem("vivoUser", JSON.stringify(authData));
   sessionStorage.setItem("vivoUserData", JSON.stringify(userData));
 };

@@ -121,7 +121,7 @@ export function IndividualTargetsForm({
                                     <Select
                                        value={row.productCode}
                                        defaultValue={String(defaultProduct?.Description )|| ''}
-                                       onValueChange={(val) => updateRow(targetIndex, rowIndex, 'productCode', val)}
+                                       onValueChange={(val: any) => updateRow(targetIndex, rowIndex, 'productCode', val)}
                                     >
                                        <SelectTrigger className="w-[160px]">
                                           <SelectValue placeholder="Select Product" />
@@ -145,7 +145,7 @@ export function IndividualTargetsForm({
                            <TableCell>
                               <Select
                                  value={row.sku?.SKU_Code ?? ''}
-                                 onValueChange={(val) => updateRow(targetIndex, rowIndex, 'sku', val)}
+                                 onValueChange={(val: any) => updateRow(targetIndex, rowIndex, 'sku', val)}
                                  
                               >
                                  <SelectTrigger className="w-[160px] mt-2">

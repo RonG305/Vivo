@@ -106,7 +106,7 @@ export function IndividualTargetsForm({
                            <TableCell>{<VivoProducts />}</TableCell>
                            <TableCell>{target.Daily_Target.toFixed(3)}</TableCell>
                            <TableCell>
-                              <Select onValueChange={(value) => handleSKUSelect(index, value)}>
+                              <Select onValueChange={(value: any) => handleSKUSelect(index, value)}>
                                  <SelectTrigger className="w-full mt-2">
                                     <SelectValue placeholder="Select SKU" />
                                  </SelectTrigger>
