@@ -21,33 +21,69 @@ import { useEffect, useState } from "react"
 
 
 export function AppSidebar() {
-   const [loading, setLoading] = useState(false)
+   // const [loading, setLoading] = useState(false)
+   // const router = useRouter();
+
+   // const [loggedInUser, setLoggedInUser] = useState(() => {
+   //    const userCookie = document.cookie.split('; ').find(row => row.startsWith('vivoUser='));
+   //    if (userCookie) {
+   //       const userData = userCookie.split('=')[1];
+   //       return userData ? JSON.parse(decodeURIComponent(userData)) : null;
+   //    }
+   //    return null;
+   // });
+
+   // useEffect(() => {
+   //    if (!loggedInUser) {
+   //       router.push('/login');
+   //    }
+   // }, [loggedInUser, router]);
+
+   const [loading, setLoading] = useState(false);
+   const [loggedInUser, setLoggedInUser] = useState<any>(null);
    const router = useRouter();
 
-   const [loggedInUser, setLoggedInUser] = useState(() => {
-      const userCookie = document.cookie.split('; ').find(row => row.startsWith('vivoUser='));
-      if (userCookie) {
-         const userData = userCookie.split('=')[1];
-         return userData ? JSON.parse(decodeURIComponent(userData)) : null;
+   // ✅ Safe: only runs in browser
+   useEffect(() => {
+      if (typeof document !== "undefined") {
+         const userCookie = document.cookie
+            .split("; ")
+            .find((row) => row.startsWith("vivoUser="));
+
+         if (userCookie) {
+            const userData = userCookie.split("=")[1];
+            setLoggedInUser(
+               userData ? JSON.parse(decodeURIComponent(userData)) : null
+            );
+         }
       }
-      return null;
-   });
+   }, []);
 
    useEffect(() => {
       if (!loggedInUser) {
-         router.push('/login');
+         router.push("/login");
       }
    }, [loggedInUser, router]);
 
-
    const handleLogout = () => {
-      document.cookie = 'vivoUser=; Max-Age=0; path=/';
+      if (typeof document !== "undefined") {
+         document.cookie = "vivoUser=; Max-Age=0; path=/";
+      }
       setLoading(true);
       setLoggedInUser(null);
       setTimeout(() => {
-         router.push('/login');
+         router.push("/login");
       }, 3000);
    };
+
+   // const handleLogout = () => {
+   //    document.cookie = 'vivoUser=; Max-Age=0; path=/';
+   //    setLoading(true);
+   //    setLoggedInUser(null);
+   //    setTimeout(() => {
+   //       router.push('/login');
+   //    }, 3000);
+   // };
 
 
    return (
