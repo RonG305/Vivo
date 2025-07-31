@@ -9,8 +9,10 @@ import { API_AUTHORIZATION, API_BASE_URL } from '@/lib/constants'
 import { ProductSKU, VivoProduct, VivoSalesHeader } from '@/types'
 import { Card } from '../ui/card'
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
+import { useRouter } from 'next/navigation'
+import { ToastContainer, toast } from 'react-toastify';
 
-const PendingRecordsSalesView = ({ No }: { No: string}) => {
+const PendingRecordsSalesView = ({ No }: { No: string }) => {
    const [lineItems, setLineItems] = useState<any[]>([])
    const [products, setProducts] = useState<VivoProduct[]>([])
    const [SKU, setSKU] = useState<ProductSKU[]>([])
@@ -22,6 +24,10 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
    const [qty, setQty] = useState<number>(0)
    const [total, setTotal] = useState<number>(0)
    const [header, setHeader] = useState<any>({})
+   const [loading, setLoading] = useState<boolean>(false)
+   const [message, setMessage]  = useState("")
+
+   const router = useRouter()
 
    async function patchProduct(no: string, sn: number, productCode: string, etag: string) {
       try {
@@ -230,9 +236,8 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
             }
 
             const data = await response.json()
-            console.log("RETURENED SALES LINES: ", data?.value)
             setLineItems(data?.value)
-
+            console.log("DATA FETCHED: ", data?.value)
             return await response.json();
 
          } catch (error) {
@@ -242,6 +247,66 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
 
       fetchData()
    }, [No])
+
+
+   const createNewLineData = async () => {
+      try {
+         const response = await fetch(`${API_BASE_URL}/NewSalesLines?$filter=No eq '${No}'`, {
+            method: "POST",
+            headers: {
+               "Content-Type": "application/json",
+               ...({ Authorization: `${API_AUTHORIZATION}` }),
+            },
+         });
+
+         if (!response.ok) {
+            throw new Error(`HTTP error!, status: ${response.status}`);
+         }
+
+         const data = await response.json()
+         setLineItems(data?.value)
+         return await response.json();
+
+      } catch (error) {
+         throw error;
+      }
+   }
+
+
+
+   const deleteData = async (snNumber: string, lineNumber: string) => {
+      try {
+         setLoading(true)
+         const response = await fetch(`${API_BASE_URL}/NewSalesLines('${snNumber}',${lineNumber})`, {
+            method: "DELETE",
+            headers: {
+               "Content-Type": "application/json",
+               ...({ Authorization: `${API_AUTHORIZATION}` }),
+            },
+         });
+
+         if (!response.ok) {
+            console.log("Error deleting record:", response.statusText);
+            throw new Error(`HTTP error!, status: ${response.status}`);
+         }
+
+         // const data = await response.json()
+         // setLineItems(data?.value)
+         setLineItems((prev) =>
+            prev.filter((item) => !(item.No === snNumber && item.SN === lineNumber))
+         );
+         console.log("REcord deleted succesifully")
+
+      } catch (error) {
+         throw error;
+      }
+   }
+
+
+
+   // useEffect(() => {
+   //    deleteData(No, "0")
+   // }, [No])
 
    useEffect(() => {
       const fetchData = async () => {
@@ -259,7 +324,6 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
             }
 
             const data = await response.json()
-            console.log("RETURENED SALES LINES: ", data?.value)
             setHeader(data?.value?.[0])
             return await response.json();
          } catch (error) {
@@ -286,7 +350,6 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
             }
 
             const data = await response.json()
-            console.log("Vivo products: ", data?.value)
             setProducts(data?.value || [])
             return await response.json();
 
@@ -296,6 +359,41 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
       }
       fetchProducts()
    }, [])
+
+
+// *****************************send for approval*****************
+
+   const submitForApproval = async () => {
+      try {
+         const response = await fetch(`${API_BASE_URL}/SendRequestForApproval`, {
+            method: "POST",
+            headers: {
+               "Content-Type": "application/json",
+               Authorization: `${API_AUTHORIZATION}`,
+            },
+            body: JSON.stringify({
+               "@odata.etag":header["@odata.etag"],
+               No: No,
+
+            
+            }),
+         });
+
+         if (!response.ok) {
+            setMessage("Failed to submit for approval")
+            throw new Error(`HTTP error!, status: ${response.status}`);
+         }
+
+         const result = await response.json();
+         console.log("Submitted for approval:", result);
+         setMessage("Submitted for approval successfully")
+         return result;
+
+      } catch (error) {
+         console.error("Error submitting for approval:", error);
+         throw error;
+      }
+   };
 
    useEffect(() => {
       const fetchProductSKUs = async () => {
@@ -313,7 +411,6 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
             }
 
             const data = await response.json()
-            console.log("Vivo products: ", data?.value)
             setSKU(data?.value || [])
             return await response.json();
 
@@ -329,12 +426,30 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
    return (
       <div>
          <Dialog  >
+            
+            
             <form>
                <DialogTrigger asChild>
                   <Button variant="link" className='cursor-pointer hover:text-secondary'>
-                      { No}</Button>
+                     {No}</Button>
                </DialogTrigger>
-               <DialogContent className="sm:max-w-fit max-h-[95vh] overflow-y-auto overflow-x-auto">
+               <DialogContent className="sm:max-w-[95vw] max-h-[95vh] overflow-y-auto overflow-x-auto">
+                  {/* <form onSubmit={submitForApproval("W/\"JzQ0O0FmWHZGeUZSMW83S09XNElISm96dnh0RVBZZUt3U2duOTZtL1NvZEtUY2c9MTswMDsn\"", "NS-001")}> */}
+
+                  {message && (
+                     <div className="mb-4">
+                        <p className="text-green-600">{message}</p>
+                     </div>
+                  )}
+                  <div className="flex items-center justify-end my-5 gap-2">
+                     <DialogClose asChild>
+                        <Button variant="outline">Cancel</Button>
+                     </DialogClose>
+                     <Button
+                     onSubmit={submitForApproval}
+                        type="submit">Save changes</Button>
+                  </div>
+                  {/* </form> */}
                   <DialogHeader>
                      <DialogTitle>Profile Details No : {No}</DialogTitle>
                      <DialogDescription>
@@ -553,7 +668,7 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
                                     {/* Actions */}
                                     <TableCell>
                                        <Button variant="outline" size="sm" className="mr-2">+</Button>
-                                       <Button variant="destructive" size="sm">x</Button>
+                                       <Button onClick={() => deleteData(item.No, item.SN)} variant="destructive" size="sm">x</Button>
                                     </TableCell>
                                  </TableRow>
                               ))}
@@ -564,12 +679,7 @@ const PendingRecordsSalesView = ({ No }: { No: string}) => {
                      </Card>
 
                   </div>
-                  <DialogFooter>
-                     <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                     </DialogClose>
-                     <Button type="submit">Save changes</Button>
-                  </DialogFooter>
+
                </DialogContent>
             </form>
          </Dialog>
