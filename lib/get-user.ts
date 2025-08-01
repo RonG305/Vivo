@@ -1,3 +1,5 @@
+// lib/get-user.ts
+
 import { VivoUserSessionDetails } from "@/types";
 import { cookies } from "next/headers";
 
@@ -7,12 +9,15 @@ export async function getUserData(): Promise<VivoUserSessionDetails | null> {
   if (!userCookie) {
     return null;
   }
-  let user;
+
   try {
-    user = JSON.parse(decodeURIComponent(userCookie.value));
+    // JSON might include extra props; we trust it matches VivoUserSessionDetails
+    const user: VivoUserSessionDetails = JSON.parse(
+      decodeURIComponent(userCookie.value)
+    );
+    return user;
   } catch (err) {
     console.error("Invalid cookie format", err);
     return null;
   }
-  return user;
 }

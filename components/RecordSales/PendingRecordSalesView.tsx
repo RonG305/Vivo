@@ -1,690 +1,487 @@
+'use client'
+
 import React, { useEffect, useState } from 'react'
-import { Dialog, DialogClose, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
+import { useRouter } from 'next/navigation'
+import {
+  Dialog,
+  DialogTrigger,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '../ui/dialog'
 import { Button } from '../ui/button'
-import { Icon } from '@iconify/react/dist/iconify.js'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
-import { fetchData } from '@/lib/api'
-import { API_AUTHORIZATION, API_BASE_URL } from '@/lib/constants'
-import { ProductSKU, VivoProduct, VivoSalesHeader } from '@/types'
 import { Card } from '../ui/card'
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '../ui/table'
-import { useRouter } from 'next/navigation'
-import { ToastContainer, toast } from 'react-toastify';
-
-const PendingRecordsSalesView = ({ No }: { No: string }) => {
-   const [lineItems, setLineItems] = useState<any[]>([])
-   const [products, setProducts] = useState<VivoProduct[]>([])
-   const [SKU, setSKU] = useState<ProductSKU[]>([])
-   const [selectedProduct, setSelectedProduct] = useState<string>("")
-   const [target, setTarget] = useState<number>(7)
-   const [selectedSKU, setSelectedSKU] = useState<string>("")
-   const [skuLitres, setSKULitres] = useState<number>(0)
-   const [grade, setGrade] = useState<string>("")
-   const [qty, setQty] = useState<number>(0)
-   const [total, setTotal] = useState<number>(0)
-   const [header, setHeader] = useState<any>({})
-   const [loading, setLoading] = useState<boolean>(false)
-   const [message, setMessage]  = useState("")
-
-   const router = useRouter()
-
-   async function patchProduct(no: string, sn: number, productCode: string, etag: string) {
-      try {
-         const response = await fetch(
-            `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
-            {
-               method: "PATCH",
-               headers: {
-                  "Content-Type": "application/json",
-                  Authorization: API_AUTHORIZATION,
-                  "If-Match": etag,
-               },
-               body: JSON.stringify({
-                  Product_Code: productCode,
-               }),
-            }
-         );
-
-         if (!response.ok) {
-            throw new Error(`HTTP error!, status: ${response.status}`);
-         }
-
-         const data = await response.json();
-         console.log("updated Sales Line:", data);
-         setTarget(data.Target || 0);
-         return data;
-      } catch (error) {
-         console.error(" Error updating sales line:", error);
-         throw error;
-      }
-   }
-
-   const handleProductChange = async (rowIndex: number, productCode: string) => {
-      const row = lineItems[rowIndex];
-      if (!row) return;
-
-      try {
-         setLineItems((prev) =>
-            prev.map((l, i) => (i === rowIndex ? { ...l, Product: productCode } : l))
-         );
-         const updated = await patchProduct(row.No, row.SN, productCode, row["@odata.etag"]);
-         // setLineItems((prev) =>
-         //    prev.map((l, i) => (i === rowIndex ? { ...l, "@odata.etag": updated["@odata.etag"] } : l))
-         // );
-         setLineItems((prev) =>
-            prev.map((l, i) =>
-               i === rowIndex
-                  ? {
-                     ...l,
-                     "@odata.etag": updated["@odata.etag"],
-                     Target: updated.Target,
-
-
-                  }
-                  : l
-            )
-         );
-      } catch (err) {
-         console.error("Patch failed:", err);
-      }
-   };
-
-
-   async function patchSKU(no: string, sn: number, SKU_Code: string, etag: string) {
-      try {
-         const response = await fetch(
-            `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
-            {
-               method: "PATCH",
-               headers: {
-                  "Content-Type": "application/json",
-                  Authorization: API_AUTHORIZATION,
-                  "If-Match": etag,
-               },
-               body: JSON.stringify({
-                  SKU_Code: SKU_Code,
-               }),
-            }
-         );
-
-         if (!response.ok) {
-            throw new Error(`HTTP error!, status: ${response.status}`);
-         }
-
-         const data = await response.json();
-         console.log("updated Sales Line:", data);
-         setTarget(data.Target || 0);
-         return data;
-      } catch (error) {
-         console.error(" Error updating sales line:", error);
-         throw error;
-      }
-   }
-
-
-   async function patchQuantity(no: string, sn: number, Quantity: number, etag: string) {
-      try {
-         const response = await fetch(
-            `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
-            {
-               method: "PATCH",
-               headers: {
-                  "Content-Type": "application/json",
-                  Authorization: API_AUTHORIZATION,
-                  "If-Match": etag,
-               },
-               body: JSON.stringify({
-                  Quantity: Quantity,
-               }),
-            }
-         );
-
-         if (!response.ok) {
-            throw new Error(`HTTP error!, status: ${response.status}`);
-         }
-
-         const data = await response.json();
-         return data;
-      } catch (error) {
-         console.error(" Error updating sales line:", error);
-         throw error;
-      }
-   }
-
-
-   const handleQuantity = async (rowIndex: number, Quantity: number) => {
-      const row = lineItems[rowIndex];
-      if (!row) return;
-
-      const quantityNUmber = Number(Quantity);
-
-      try {
-         setLineItems((prev) =>
-            prev.map((l, i) => (i === rowIndex ? { ...l, Quantity: quantityNUmber } : l))
-         );
-         const updated = await patchQuantity(row.No, row.SN, Quantity, row["@odata.etag"]);
-
-         setLineItems((prev) =>
-            prev.map((l, i) =>
-               i === rowIndex
-                  ? {
-                     ...l,
-                     "@odata.etag": updated["@odata.etag"],
-                     Total: updated.Total,
-                     SKU_Ratio: updated.SKU_Ratio,
-                     Commission_Earned: updated.Commission_Earned,
-
-                  }
-                  : l
-            )
-         );
-
-      } catch (err) {
-         console.error("Patch failed:", err);
-      }
-   };
-
-   const handleSKUChange = async (rowIndex: number, SKU_Code: string) => {
-      const row = lineItems[rowIndex];
-      if (!row) return;
-
-      try {
-         setLineItems((prev) =>
-            prev.map((l, i) => (i === rowIndex ? { ...l, SKU_Code: SKU_Code } : l))
-         );
-         const updated = await patchSKU(row.No, row.SN, SKU_Code, row["@odata.etag"]);
-
-         setLineItems((prev) =>
-            prev.map((l, i) =>
-               i === rowIndex
-                  ? {
-                     ...l,
-                     "@odata.etag": updated["@odata.etag"],
-                     SKU_Code: updated.SKU_Code,
-                     SKU_Liters: updated.SKU_Liters,
-                     Grade: updated.SKU_Grade,
-                     Quantity: updated.Quantity,
-                     Total: updated.Total
-
-                  }
-                  : l
-            )
-         );
-
-      } catch (err) {
-         console.error("Patch failed:", err);
-      }
-   };
-
-
-
-
-   useEffect(() => {
-      const fetchData = async () => {
-         try {
-            const response = await fetch(`${API_BASE_URL}/NewSalesLines?$filter=No eq '${No}'`, {
-               method: "GET",
-               headers: {
-                  "Content-Type": "application/json",
-                  ...({ Authorization: `${API_AUTHORIZATION}` }),
-               },
-            });
-
-            if (!response.ok) {
-               throw new Error(`HTTP error!, status: ${response.status}`);
-            }
-
-            const data = await response.json()
-            setLineItems(data?.value)
-            console.log("DATA FETCHED: ", data?.value)
-            return await response.json();
-
-         } catch (error) {
-            throw error;
-         }
-      }
-
-      fetchData()
-   }, [No])
-
-
-   const createNewLineData = async () => {
-      try {
-         const response = await fetch(`${API_BASE_URL}/NewSalesLines?$filter=No eq '${No}'`, {
-            method: "POST",
-            headers: {
-               "Content-Type": "application/json",
-               ...({ Authorization: `${API_AUTHORIZATION}` }),
-            },
-         });
-
-         if (!response.ok) {
-            throw new Error(`HTTP error!, status: ${response.status}`);
-         }
-
-         const data = await response.json()
-         setLineItems(data?.value)
-         return await response.json();
-
-      } catch (error) {
-         throw error;
-      }
-   }
-
-
-
-   const deleteData = async (snNumber: string, lineNumber: string) => {
-      try {
-         setLoading(true)
-         const response = await fetch(`${API_BASE_URL}/NewSalesLines('${snNumber}',${lineNumber})`, {
-            method: "DELETE",
-            headers: {
-               "Content-Type": "application/json",
-               ...({ Authorization: `${API_AUTHORIZATION}` }),
-            },
-         });
-
-         if (!response.ok) {
-            console.log("Error deleting record:", response.statusText);
-            throw new Error(`HTTP error!, status: ${response.status}`);
-         }
-
-         // const data = await response.json()
-         // setLineItems(data?.value)
-         setLineItems((prev) =>
-            prev.filter((item) => !(item.No === snNumber && item.SN === lineNumber))
-         );
-         console.log("REcord deleted succesifully")
-
-      } catch (error) {
-         throw error;
-      }
-   }
-
-
-
-   // useEffect(() => {
-   //    deleteData(No, "0")
-   // }, [No])
-
-   useEffect(() => {
-      const fetchData = async () => {
-         try {
-            const response = await fetch(`${API_BASE_URL}/NewOpenSalesList_2?$filter=No eq '${No}'`, {
-               method: "GET",
-               headers: {
-                  "Content-Type": "application/json",
-                  ...({ Authorization: `${API_AUTHORIZATION}` }),
-               },
-            });
-
-            if (!response.ok) {
-               throw new Error(`HTTP error!, status: ${response.status}`);
-            }
-
-            const data = await response.json()
-            setHeader(data?.value?.[0])
-            return await response.json();
-         } catch (error) {
-            throw error;
-         }
-      }
-
-      fetchData()
-   }, [No])
-
-   useEffect(() => {
-      const fetchProducts = async () => {
-         try {
-            const response = await fetch(`${API_BASE_URL}/vivoproducts`, {
-               method: "GET",
-               headers: {
-                  "Content-Type": "application/json",
-                  ...({ Authorization: `${API_AUTHORIZATION}` }),
-               },
-            });
-
-            if (!response.ok) {
-               throw new Error(`HTTP error!, status: ${response.status}`);
-            }
-
-            const data = await response.json()
-            setProducts(data?.value || [])
-            return await response.json();
-
-         } catch (error) {
-            throw error;
-         }
-      }
-      fetchProducts()
-   }, [])
-
-
-// *****************************send for approval*****************
-
-   const submitForApproval = async () => {
-      try {
-         const response = await fetch(`${API_BASE_URL}/SendRequestForApproval`, {
-            method: "POST",
-            headers: {
-               "Content-Type": "application/json",
-               Authorization: `${API_AUTHORIZATION}`,
-            },
-            body: JSON.stringify({
-               "@odata.etag":header["@odata.etag"],
-               No: No,
-
-            
-            }),
-         });
-
-         if (!response.ok) {
-            setMessage("Failed to submit for approval")
-            throw new Error(`HTTP error!, status: ${response.status}`);
-         }
-
-         const result = await response.json();
-         console.log("Submitted for approval:", result);
-         setMessage("Submitted for approval successfully")
-         return result;
-
-      } catch (error) {
-         console.error("Error submitting for approval:", error);
-         throw error;
-      }
-   };
-
-   useEffect(() => {
-      const fetchProductSKUs = async () => {
-         try {
-            const response = await fetch(`${API_BASE_URL}/LubricantSKUs`, {
-               method: "GET",
-               headers: {
-                  "Content-Type": "application/json",
-                  ...({ Authorization: `${API_AUTHORIZATION}` }),
-               },
-            });
-
-            if (!response.ok) {
-               throw new Error(`HTTP error!, status: ${response.status}`);
-            }
-
-            const data = await response.json()
-            setSKU(data?.value || [])
-            return await response.json();
-
-         } catch (error) {
-            throw error;
-         }
-      }
-      fetchProductSKUs()
-   }, [])
-
-
-
-   return (
-      <div>
-         <Dialog  >
-            
-            
-            <form>
-               <DialogTrigger asChild>
-                  <Button variant="link" className='cursor-pointer hover:text-secondary'>
-                     {No}</Button>
-               </DialogTrigger>
-               <DialogContent className="sm:max-w-[95vw] max-h-[95vh] overflow-y-auto overflow-x-auto">
-                  {/* <form onSubmit={submitForApproval("W/\"JzQ0O0FmWHZGeUZSMW83S09XNElISm96dnh0RVBZZUt3U2duOTZtL1NvZEtUY2c9MTswMDsn\"", "NS-001")}> */}
-
-                  {message && (
-                     <div className="mb-4">
-                        <p className="text-green-600">{message}</p>
-                     </div>
-                  )}
-                  <div className="flex items-center justify-end my-5 gap-2">
-                     <DialogClose asChild>
-                        <Button variant="outline">Cancel</Button>
-                     </DialogClose>
-                     <Button
-                     onSubmit={submitForApproval}
-                        type="submit">Save changes</Button>
-                  </div>
-                  {/* </form> */}
-                  <DialogHeader>
-                     <DialogTitle>Profile Details No : {No}</DialogTitle>
-                     <DialogDescription>
-
-                     </DialogDescription>
-                  </DialogHeader>
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                        <Label className="uppercase">Captured By</Label>
-                        <Input
-                           id="Record"
-                           name="record"
-                           defaultValue={No}
-                           readOnly
-                           className="mt-2"
-                        />
-                     </div>
-                     <div>
-                        <Label className="uppercase">Region</Label>
-                        <Input
-                           id="region"
-                           name="region"
-                           defaultValue={header?.Region_Name}
-                           readOnly
-                           className="mt-2"
-                        />
-                     </div>
-                     <div>
-                        <Label className="uppercase">Region Code</Label>
-                        <Input
-                           id="region-code"
-                           name="region_code"
-                           defaultValue={header?.Region_Code}
-                           readOnly
-                           className="mt-2"
-                        />
-                     </div>
-                     <div>
-                        <Label className="uppercase">Outlet</Label>
-                        <Input
-                           id="outlet"
-                           name="outlet"
-                           defaultValue={header?.Outlet_Name}
-                           readOnly
-                           className="mt-2"
-                        />
-                     </div>
-                     <div>
-                        <Label className="uppercase">Outlet Code</Label>
-                        <Input
-                           id="outlet-code"
-                           name="outlet_code"
-                           defaultValue={header?.Outlet_Code}
-                           readOnly
-                           className="mt-2"
-                        />
-                     </div>
-                     <div>
-                        <Label className="uppercase">Captured Date</Label>
-                        <Input
-                           id="captured-date"
-                           name="captured_date"
-                           type="date"
-                           defaultValue={new Date().toISOString().split("T")[0]}
-                           className="mt-2"
-                        />
-                     </div>
-
-                     <div>
-                        <Label className="uppercase">Captured Time</Label>
-                        <Input
-                           id="captured-time"
-                           name="captured_time"
-                           type="time"
-                           defaultValue={new Date().toTimeString().split(" ")[0].substring(0, 5)}
-                           className="mt-2"
-                        />
-                     </div>
-                     <div>
-                        <Label className="uppercase">Sales Date</Label>
-                        <Input
-                           id="sales-date"
-                           name="sales_date"
-                           type="date"
-                           defaultValue={new Date(Date.now() - 86400000).toISOString().split("T")[0]}
-                           className="mt-2"
-                        />
-
-                     </div>
-
-                  </div>
-
-                  {/* New Sales Lines */}
-                  <div>
-                     <Card className="mt-4 bg-transparent p-4">
-                        <Table>
-                           <TableCaption>Individual Sales Targets</TableCaption>
-                           <TableHeader>
-                              <TableRow>
-                                 <TableHead>Name</TableHead>
-                                 <TableHead>Role</TableHead>
-                                 <TableHead>Product</TableHead>
-                                 <TableHead>Target (Ltrs)</TableHead>
-                                 <TableHead>SKU</TableHead>
-                                 <TableHead>SKU (Ltrs)</TableHead>
-                                 <TableHead>Grade</TableHead>
-                                 <TableHead>Qty</TableHead>
-                                 <TableHead>Total (Ltrs)</TableHead>
-                                 <TableHead>SKU Ratio</TableHead>
-                                 <TableHead>Commission Earned</TableHead>
-                                 <TableHead>Actions</TableHead>
-                              </TableRow>
-                           </TableHeader>
-
-                           <TableBody>
-                              {lineItems?.map((item, index) => (
-                                 <TableRow key={index}>
-                                    <TableCell className="font-medium">{item.Officer_Name}</TableCell>
-                                    <TableCell>{item.Role_Name}</TableCell>
-
-                                    {/* Product Select */}
-                                    <TableCell>
-                                       <select
-                                          className="w-[200px] border rounded px-2 py-1"
-                                          value={item.Product || ""}
-                                          onChange={(e) => handleProductChange(index, e.target.value)}
-                                       >
-                                          <option value="">Select Product</option>
-                                          {products?.map((product) => (
-                                             <option key={product.Code} value={product.Code}>
-                                                {product.Description}
-                                             </option>
-                                          ))}
-                                       </select>
-                                    </TableCell>
-
-
-                                    {/* Target (Ltrs) */}
-                                    <TableCell>
-                                       {/* <Input
-                                             type="text"
-                                             className="w-[100px]"
-                                             value={item.Target || ""}
-                                             
-                                          /> */}
-                                       <p>{item.Target}</p>
-                                    </TableCell>
-
-                                    <TableCell>
-                                       <select
-                                          className="w-[200px] border rounded px-2 py-1"
-                                          value={item.SKU_Code || ""}
-                                          onChange={(e) => handleSKUChange(index, e.target.value)}
-                                       >
-                                          <option value="">Select SKU</option>
-                                          {SKU?.map((sku) => (
-                                             <option key={sku.SKU_Code} value={sku.SKU_Code}>
-                                                {sku.SKU_Name}
-                                             </option>
-                                          ))}
-                                       </select>
-                                    </TableCell>
-
-                                    {/* SKU (Ltrs) */}
-                                    <TableCell>
-
-                                       <p>{item.SKU_Liters}</p>
-                                    </TableCell>
-
-
-
-                                    {/* Grade */}
-                                    <TableCell>
-                                       {/* <Input
-                                             type="text"
-                                             className="w-[100px]"
-                                             value={item.Grade ||  ""}
-                                             readOnly
-                                           
-                                          /> */}
-                                       <p>{item.Grade}</p>
-                                    </TableCell>
-
-                                    {/* Qty */}
-                                    <TableCell>
-                                       <Input
-                                          type="number"
-                                          className="w-[100px]"
-                                          onChange={(e) => handleQuantity(index, Number(e.target.value))}
-
-                                       />
-                                    </TableCell>
-
-                                    {/* Total (Ltrs) */}
-                                    <TableCell>
-                                       {/* <Input
-                                             type="text"
-                                             className="w-[100px]"
-                                             value={item.Total || ""}
-                                             readOnly
-                                          /> */}
-                                       <p>{item.Total}</p>
-                                    </TableCell>
-
-                                    {/* Cumulative Total (Ltrs) */}
-                                    <TableCell>
-
-                                       <p>{item.SKU_Ratio}</p>
-                                    </TableCell>
-
-                                    {/* Variance */}
-                                    <TableCell>
-                                       <p>{item.Commission_Earned}</p>
-                                    </TableCell>
-
-                                    {/* Actions */}
-                                    <TableCell>
-                                       <Button variant="outline" size="sm" className="mr-2">+</Button>
-                                       <Button onClick={() => deleteData(item.No, item.SN)} variant="destructive" size="sm">x</Button>
-                                    </TableCell>
-                                 </TableRow>
-                              ))}
-
-
-                           </TableBody>
-                        </Table>
-                     </Card>
-
-                  </div>
-
-               </DialogContent>
-            </form>
-         </Dialog>
-      </div>
-   )
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '../ui/table'
+import { API_BASE_URL, API_AUTHORIZATION } from '@/lib/constants'
+import { submitForApproval } from '@/lib/api'
+import { VivoProduct, ProductSKU, VivoSalesHeader } from '@/types'
+
+interface Props {
+  No: string
 }
 
-export default PendingRecordsSalesView
+export default function PendingRecordsSalesView({ No }: Props) {
+  const router = useRouter()
+  const [open, setOpen] = useState(false)
+  const onClose = () => setOpen(false)
+
+  const [header, setHeader] = useState<VivoSalesHeader | null>(null)
+  const [lineItems, setLineItems] = useState<any[]>([])
+  const [products, setProducts] = useState<VivoProduct[]>([])
+  const [skus, setSkus] = useState<ProductSKU[]>([])
+  const [message, setMessage] = useState<string>('')
+  const [loading, setLoading] = useState<boolean>(false)
+
+  // 1. Fetch header when dialog opens
+  useEffect(() => {
+    if (!No || !open) return
+    fetch(
+      `${API_BASE_URL}/NewOpenSalesList_2?$filter=No eq '${No}'`,
+      { headers: { Authorization: API_AUTHORIZATION } }
+    )
+      .then(r => r.json())
+      .then(d => setHeader(d.value?.[0] || null))
+      .catch(err => console.error('Header fetch error:', err))
+  }, [No, open])
+
+  // 2. Fetch line items when dialog opens
+  useEffect(() => {
+    if (!No || !open) return
+    fetch(
+      `${API_BASE_URL}/NewSalesLines?$filter=No eq '${No}'`,
+      { headers: { Authorization: API_AUTHORIZATION } }
+    )
+      .then(r => r.json())
+      .then(d => setLineItems(d.value || []))
+      .catch(err => console.error('Lines fetch error:', err))
+  }, [No, open])
+
+  // 3. Fetch product master
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/vivoproducts`, {
+      headers: { Authorization: API_AUTHORIZATION },
+    })
+      .then(r => r.json())
+      .then(d => setProducts(d.value || []))
+      .catch(err => console.error('Products fetch error:', err))
+  }, [])
+
+  // 4. Fetch SKU master
+  useEffect(() => {
+    fetch(`${API_BASE_URL}/LubricantSKUs`, {
+      headers: { Authorization: API_AUTHORIZATION },
+    })
+      .then(r => r.json())
+      .then(d => setSkus(d.value || []))
+      .catch(err => console.error('SKUs fetch error:', err))
+  }, [])
+
+  // Generic PATCH helper
+  async function patchLine(
+    no: string,
+    sn: number,
+    body: Record<string, any>,
+    etag: string
+  ) {
+    const res = await fetch(
+      `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
+      {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: API_AUTHORIZATION,
+          'If-Match': etag,
+        },
+        body: JSON.stringify(body),
+      }
+    )
+    if (!res.ok) throw new Error(`PATCH failed: ${res.status}`)
+    return res.json()
+  }
+
+  // Handlers for product, SKU, quantity...
+  const handleProductChange = async (idx: number, code: string) => {
+    const row = lineItems[idx]
+    if (!row) return
+    try {
+      const updated = await patchLine(
+        row.No,
+        row.SN,
+        { Product_Code: code },
+        row['@odata.etag']
+      )
+      setLineItems(prev =>
+        prev.map((r, i) =>
+          i === idx
+            ? {
+                ...r,
+                Product: code,
+                Target: updated.Target,
+                '@odata.etag': updated['@odata.etag'],
+              }
+            : r
+        )
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleSKUChange = async (idx: number, code: string) => {
+    const row = lineItems[idx]
+    if (!row) return
+    try {
+      const updated = await patchLine(
+        row.No,
+        row.SN,
+        { SKU_Code: code },
+        row['@odata.etag']
+      )
+      setLineItems(prev =>
+        prev.map((r, i) =>
+          i === idx
+            ? {
+                ...r,
+                SKU_Code: code,
+                SKU_Liters: updated.SKU_Liters,
+                Grade: updated.SKU_Grade,
+                Total: updated.Total,
+                Quantity: updated.Quantity,
+                '@odata.etag': updated['@odata.etag'],
+              }
+            : r
+        )
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const handleQuantityChange = async (idx: number, qty: number) => {
+    const row = lineItems[idx]
+    if (!row) return
+    try {
+      const updated = await patchLine(
+        row.No,
+        row.SN,
+        { Quantity: qty },
+        row['@odata.etag']
+      )
+      setLineItems(prev =>
+        prev.map((r, i) =>
+          i === idx
+            ? {
+                ...r,
+                Quantity: updated.Quantity,
+                Total: updated.Total,
+                SKU_Ratio: updated.SKU_Ratio,
+                Commission_Earned: updated.Commission_Earned,
+                '@odata.etag': updated['@odata.etag'],
+              }
+            : r
+        )
+      )
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  // Create & delete
+  const createNewLine = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/NewSalesLines`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: API_AUTHORIZATION,
+        },
+        body: JSON.stringify({ No }),
+      })
+      if (!res.ok) throw new Error(`POST failed: ${res.status}`)
+      const data = await res.json()
+      setLineItems(prev => [...prev, ...data.value])
+    } catch (e) {
+      console.error(e)
+    }
+  }
+
+  const deleteLine = async (no: string, sn: number) => {
+    setLoading(true)
+    try {
+      const res = await fetch(
+        `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
+        { method: 'DELETE', headers: { Authorization: API_AUTHORIZATION } }
+      )
+      if (!res.ok) throw new Error(`DELETE failed: ${res.status}`)
+      setLineItems(prev => prev.filter(r => !(r.No === no && r.SN === sn)))
+    } catch (e) {
+      console.error(e)
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  // Submit for approval
+  const handleSubmitForApproval = async () => {
+    if (!header) return
+    setLoading(true)
+    setMessage('')
+
+    try {
+      await submitForApproval(No, header['@odata.etag'])
+      setMessage('✅ Submitted for approval')
+      setHeader(h => h && { ...h, Status: 'Pending Approval' })
+
+      setTimeout(() => {
+        onClose()
+        router.refresh()
+      }, 800)
+    } catch (e: any) {
+      console.error(e)
+      setMessage('❌ Failed to submit for approval')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button variant="link" onClick={() => setOpen(true)}>
+          {No}
+        </Button>
+      </DialogTrigger>
+
+      <DialogContent className="sm:max-w-[95vw] max-h-[95vh] p-0 flex flex-col overflow-hidden">
+        {message && (
+          <div
+            className={`p-4 ${
+              message.startsWith('✅')
+                ? 'bg-green-50 text-green-800'
+                : 'bg-red-50 text-red-800'
+            }`}
+          >
+            {message}
+          </div>
+        )}
+
+        <DialogHeader className="px-4 py-3 border-b">
+          <DialogTitle>Record Sales #{No}</DialogTitle>
+          <DialogDescription>
+            Review and adjust individual lines.
+          </DialogDescription>
+        </DialogHeader>
+
+        <div className="bg-white border-b px-4 py-4 sticky top-0 z-20 flex justify-between items-start flex-none">
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Captured By
+              </Label>
+              <Input defaultValue={No} readOnly className="mt-1" />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Region
+              </Label>
+              <Input
+                defaultValue={header?.Region_Name || ''}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Region Code
+              </Label>
+              <Input
+                defaultValue={header?.Region_Code || ''}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Outlet
+              </Label>
+              <Input
+                defaultValue={header?.Outlet_Name || ''}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Outlet Code
+              </Label>
+              <Input
+                defaultValue={header?.Outlet_Code || ''}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Captured Date
+              </Label>
+              <Input
+                type="date"
+                defaultValue={new Date().toISOString().split('T')[0]}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Captured Time
+              </Label>
+              <Input
+                type="time"
+                defaultValue={new Date().toTimeString().slice(0, 5)}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">
+                Sales Date
+              </Label>
+              <Input
+                type="date"
+                defaultValue={new Date(Date.now() - 86_400_000)
+                  .toISOString()
+                  .split('T')[0]}
+                readOnly
+                className="mt-1"
+              />
+            </div>
+          </div>
+
+          <div className="flex space-x-2">
+            <Button
+              variant="outline"
+              onClick={onClose}
+              disabled={loading}
+            >
+              Cancel
+            </Button>
+            <Button
+              onClick={handleSubmitForApproval}
+              disabled={loading}
+            >
+              {loading ? 'Sending…' : 'Send for Approval'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="overflow-y-auto flex-1 px-4 py-4 pb-16">
+          <Card className="bg-transparent p-0">
+            <Table>
+              <TableCaption>Individual Sales Targets</TableCaption>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Name</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Product</TableHead>
+                  <TableHead>Target</TableHead>
+                  <TableHead>SKU</TableHead>
+                  <TableHead>SKU Ltrs</TableHead>
+                  <TableHead>Grade</TableHead>
+                  <TableHead>Qty</TableHead>
+                  <TableHead>Total</TableHead>
+                  <TableHead>SKU Ratio</TableHead>
+                  <TableHead>Commission</TableHead>
+                  <TableHead>Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {lineItems.map((item, idx) => (
+                  <TableRow key={`${item.No}-${item.SN}-${idx}`}>
+                    <TableCell>{item.Officer_Name}</TableCell>
+                    <TableCell>{item.Role_Name}</TableCell>
+                    <TableCell>
+                      <select
+                        className="border px-2 py-1 rounded"
+                        value={item.Product || ''}
+                        onChange={e =>
+                          handleProductChange(idx, e.target.value)
+                        }
+                      >
+                        <option value="">-- select --</option>
+                        {products.map(p => (
+                          <option key={p.Code} value={p.Code}>
+                            {p.Description}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>{item.Target}</TableCell>
+                    <TableCell>
+                      <select
+                        className="border px-2 py-1 rounded"
+                        value={item.SKU_Code || ''}
+                        onChange={e =>
+                          handleSKUChange(idx, e.target.value)
+                        }
+                      >
+                        <option value="">-- select --</option>
+                        {skus.map(s => (
+                          <option key={s.SKU_Code} value={s.SKU_Code}>
+                            {s.SKU_Name}
+                          </option>
+                        ))}
+                      </select>
+                    </TableCell>
+                    <TableCell>{item.SKU_Liters}</TableCell>
+                    <TableCell>{item.Grade}</TableCell>
+                    <TableCell>
+                      <Input
+                        type="number"
+                        className="w-20"
+                        value={item.Quantity || ''}
+                        onChange={e =>
+                          handleQuantityChange(idx, Number(e.target.value))
+                        }
+                      />
+                    </TableCell>
+                    <TableCell>{item.Total}</TableCell>
+                    <TableCell>{item.SKU_Ratio}</TableCell>
+                    <TableCell>{item.Commission_Earned}</TableCell>
+                    <TableCell className="flex space-x-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={createNewLine}
+                      >
+                        +
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        disabled={loading}
+                        onClick={() => deleteLine(item.No, item.SN)}
+                      >
+                        ✕
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </Card>
+        </div>
+      </DialogContent>
+    </Dialog>
+  )
+}

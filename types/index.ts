@@ -1,23 +1,23 @@
+// types/index.ts
+
 export interface OpenSale {
   "@odata.etag": string;
   No: string;
-  Sales_Date: string; 
-  Sales_Time: string; 
-  Captured_By: string;
-  Region_Code: string;
-  Region_Name: string;
-  Outlet_Code: string;
-  Outlet_Name: string;
-  Sales_Description: string;
-  Total_Sales_in_Liters: number;
-  Total_Commission_Liters: number;
-  Total_Commission_Value: number;
-  Status: string;
-  Total_Target: number;
-  Actual_Date: string; 
+  Sales_Date: string;  
+  Sales_Time: string;  
+  Captured_By: string;  
+  Region_Code: string;  
+  Region_Name: string;  
+  Outlet_Code: string;  
+  Outlet_Name: string;  
+  Sales_Description: string;  
+  Total_Sales_in_Liters: number;  
+  Total_Commission_Liters: number;  
+  Total_Commission_Value: number;  
+  Status: string;  
+  Total_Target: number;  
+  Actual_Date: string;  
 }
-
-
 
 export interface VivoSalesHeader {
   "@odata.etag": string;
@@ -54,17 +54,19 @@ export interface VivoUser {
   Enabled: boolean;
 }
 
+// <-- Update this block:
 export interface VivoUserSessionDetails {
-  username: string;
-  name: string;
-  role: string;
-  region: string;
-  region_code: string;
-  outlet_code: string;
-  outlet: string;
-  token: string;
+  username: string;     // e.g. Bitsn_UserName
+  name: string;         // your display name
+  role: string;         // e.g. Role_Name
+  region: string;       // human-readable Region_Name
+  region_code: string;  // Region_Code
+  outlet: string;       // Outlet_Name
+  outlet_code: string;  // Outlet_Code
+  token: string;        // auth token (if any)
 }
 
+// other exports…
 export interface VivoProduct {
   "@odata.etag": string;
   Code: string;

@@ -1,23 +1,24 @@
-import { PendingSalesList } from '@/components/PendingSales/PendingSales';
-import { RecordSalesList } from '@/components/RecordSales/RecordSalesList';
-import { fetchData } from '@/lib/api';
-import { API_BASE_URL } from '@/lib/constants';
-import { getUserData } from '@/lib/get-user';
-import {  VivoSalesHeader } from '@/types';
-import React from 'react';
+// app/dashboard/pending-sales/page.tsx
+import React from 'react'
+import { redirect } from 'next/navigation'
+import { PendingSalesList } from '@/components/PendingSales/PendingSales'
+import { fetchData } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/constants'
+import { getUserData } from '@/lib/get-user'
+import { VivoSalesHeader } from '@/types'
 
-const page = async () => {
-   const user = await getUserData();
-   const pendingSales = await fetchData(
-      `${API_BASE_URL}/NewPendingSalesList2?$filter=Region_Code eq '${user?.region_code}' and Outlet_Code eq '${user?.outlet_code}'`,
-   );
+export default async function PendingSalesPage() {
+  const user = await getUserData()
+  if (!user) redirect('/login')
 
-   const pending: VivoSalesHeader[] = pendingSales?.value || [];
-   return (
-      <>
-         <PendingSalesList data={pending} />
-      </>
-   );
-};
+  // build the exact URL you showed us:
+  const filter = `Region_Code eq '${user.region_code}' and Outlet_Code eq '${user.outlet_code}'`
+  const url = `${API_BASE_URL}/NewPendingSalesList2?$filter=${encodeURIComponent(filter)}`
 
-export default page;
+  console.log('[PendingSalesPage] fetching →', url)
+  const raw = await fetchData<{ value: VivoSalesHeader[] }>(url)
+  console.log('[PendingSalesPage] raw fetch →', raw)
+
+  const pending: VivoSalesHeader[] = raw.value ?? []
+  return <PendingSalesList data={pending} />
+}
