@@ -1,10 +1,15 @@
 import { API_BASE_URL } from './constants'
 
 export const endpoints = {
-  // OData query to fetch sales data by region and outlet
+  // existing…
   getSalesDataOutlet: (regionCode: string, outletCode: string) =>
     `${API_BASE_URL}/VivoSalesData?$filter=Region_Code eq '${regionCode}' and Outlet_Code eq '${outletCode}'`,
 
-  // Unbound approval action; no JSON body required
+  // existing unbound approval action
   sendRequestForApproval: () => `${API_BASE_URL}/SendRequestForApproval`,
+
+  // newly added unbound actions
+  returnBackToOpen:   () => `${API_BASE_URL}/ReturnBackToOpen`,
+  approveRequest:     () => `${API_BASE_URL}/ApproveRequest`,
+  rejectRequest:      () => `${API_BASE_URL}/RejectRequest`,
 }

@@ -1,87 +1,129 @@
-// components/RecordSales/RecordNewSale.tsx
-
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { Button } from '../ui/button'
-import { createData } from '@/lib/api'
-import { API_BASE_URL, API_AUTHORIZATION } from '@/lib/constants'
 import { useRouter } from 'next/navigation'
+import { Button } from '../ui/button'
+import { Icon } from '@iconify/react/dist/iconify.js'
+import { createData } from '@/lib/api'
+import { API_BASE_URL } from '@/lib/constants'
+import RecordSalesForm from './RecordSalesForm'
+
+type Toast = {
+  type: 'success' | 'error'
+  message: string
+}
+
+interface SaleHeader {
+  Region_Name: string
+  Region_Code: string
+  Outlet_Name: string
+  Outlet_Code: string
+}
 
 export function RecordNewSale() {
   const router = useRouter()
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState<string>('')
+  const [isCreating, setIsCreating] = useState(false)
   const [saleNo, setSaleNo] = useState<string | null>(null)
-  const [showSuccess, setShowSuccess] = useState(false)
-
-  // Grab user credentials from localStorage
+  const [header, setHeader] = useState<SaleHeader | null>(null)
+  const [open, setOpen] = useState(false)
   const [user, setUser] = useState<any>(null)
+  const [toast, setToast] = useState<Toast | null>(null)
+
+  // Auto‐dismiss toast after 3s
+  useEffect(() => {
+    if (!toast) return
+    const timer = setTimeout(() => setToast(null), 3000)
+    return () => clearTimeout(timer)
+  }, [toast])
+
+  // Load user details from localStorage
   useEffect(() => {
     const stored = localStorage.getItem('vivoUser')
     if (stored) setUser(JSON.parse(stored))
   }, [])
 
-  const handleSave = async (e: React.FormEvent) => {
-    e.preventDefault()
-    setIsLoading(true)
-    setError('')
-    setShowSuccess(false)
+  // Create new sale header
+  const handleCreate = async () => {
+    if (!user) {
+      setToast({ type: 'error', message: 'User not authenticated' })
+      return
+    }
 
+    setIsCreating(true)
     try {
-      if (!user) throw new Error('User not authenticated')
-
-      // payload: adjust fields as required by your API
       const payload = {
-        '@odata.etag': user.etag ?? null,
         Region_Code: user.Region_Code,
         Outlet_Code: user.Outlet_Code,
       }
 
-      // POST new header
-      const res = await createData(`${API_BASE_URL}/NewSalesHeader`, payload)
-      if (!res.ok) {
-        throw new Error(`Sale creation failed: ${res.status}`)
-      }
+      const res = await createData(
+        `${API_BASE_URL}/NewSalesHeader`,
+        payload
+      )
+      if (!res.ok) throw new Error(`Status ${res.status}`)
 
       const data = await res.json()
-      const newNo = data.No
-      setSaleNo(newNo)
-      setShowSuccess(true)
-
-      // give user a moment to read banner, then refresh list
-      setTimeout(() => {
-        router.refresh()
-      }, 800)
+      setSaleNo(data.No)
+      setHeader({
+        Region_Name: user.Region_Name,
+        Region_Code: user.Region_Code,
+        Outlet_Name: user.Outlet_Name,
+        Outlet_Code: user.Outlet_Code,
+      })
+      setOpen(true)
+      setToast({ type: 'success', message: `Sale created: ${data.No}` })
     } catch (err: any) {
-      console.error('RecordNewSale error:', err)
-      setError(err.message || 'An unexpected error occurred')
+      console.error('Failed to create sale header:', err)
+      setToast({
+        type: 'error',
+        message: err.message || 'Failed to create sale',
+      })
     } finally {
-      setIsLoading(false)
+      setIsCreating(false)
     }
   }
 
+  // Close dialog and refresh list
+  const handleClose = () => {
+    setOpen(false)
+    setSaleNo(null)
+    router.refresh()
+  }
+
   return (
-    <form onSubmit={handleSave} className="space-y-4">
-      {error && (
-        <div className="p-2 bg-red-50 text-red-800 rounded">
-          {error}
+    <>
+      {/* Toast / Confirmation Banner */}
+      {toast && (
+        <div
+          className={`mb-4 p-3 rounded border text-sm ${
+            toast.type === 'success'
+              ? 'bg-green-50 border-green-200 text-green-800'
+              : 'bg-red-50 border-red-200 text-red-800'
+          }`}
+        >
+          {toast.message}
         </div>
       )}
 
-      {showSuccess && saleNo && (
-        <div className="p-2 bg-green-50 text-green-800 rounded">
-          Sale created successfully! New Sale No: <strong>{saleNo}</strong>
-        </div>
+      <Button onClick={handleCreate} disabled={isCreating}>
+        {isCreating ? 'Creating…' : (
+          <>
+            <Icon
+              icon="solar:add-circle-linear"
+              className="text-xl text-white"
+            />
+            New Sale
+          </>
+        )}
+      </Button>
+
+      {open && saleNo && header && (
+        <RecordSalesForm
+          No={saleNo}
+          header={header}
+          onClose={handleClose}
+        />
       )}
-
-      {/* You can insert form fields here if you need to override region/outlet choices */}
-
-      <div className="flex space-x-2">
-        <Button type="submit" disabled={isLoading}>
-          {isLoading ? 'Saving…' : 'Save New Sale'}
-        </Button>
-      </div>
-    </form>
+    </>
   )
 }

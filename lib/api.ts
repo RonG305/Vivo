@@ -1,3 +1,5 @@
+// lib/api.ts
+
 import { API_AUTHORIZATION } from './constants'
 import { endpoints } from './endpoints'
 
@@ -131,7 +133,7 @@ export async function deleteData<U = any>(
 
 /**
  * Invoke the unbound SendRequestForApproval OData action.
- * Passes the sales document number as `{ Code: <no> }` in the JSON body,
+ * Passes the sales document number as `{ Code: <code> }` in the JSON body,
  * and optionally includes an If-Match header for concurrency control.
  */
 export async function submitForApproval(
@@ -163,4 +165,25 @@ export async function submitForApproval(
   }
 
   return res.json()
+}
+
+/**
+ * Invoke the unbound ReturnBackToOpen OData action.
+ */
+export async function returnBackToOpen(code: string): Promise<void> {
+  await createData(endpoints.returnBackToOpen(), { Code: code })
+}
+
+/**
+ * Invoke the unbound ApproveRequest OData action.
+ */
+export async function approveRequest(code: string): Promise<void> {
+  await createData(endpoints.approveRequest(), { Code: code })
+}
+
+/**
+ * Invoke the unbound RejectRequest OData action.
+ */
+export async function rejectRequest(code: string): Promise<void> {
+  await createData(endpoints.rejectRequest(), { Code: code })
 }

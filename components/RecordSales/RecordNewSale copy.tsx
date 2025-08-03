@@ -36,7 +36,7 @@ export async function RecordNewSale() {
                      <DialogClose asChild>
                         <Button variant="outline">Cancel</Button>
                      </DialogClose>
-                     <Button type="submit">Save & send for approval</Button>
+                     <Button type="submit">Save & send for Approval </Button>
 
                   </div>
                   <VivoUserDetails />

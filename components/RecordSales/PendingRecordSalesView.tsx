@@ -1,3 +1,5 @@
+// components/RecordSales/PendingRecordSalesView.tsx
+
 'use client'
 
 import React, { useEffect, useState } from 'react'
@@ -87,12 +89,15 @@ export default function PendingRecordsSalesView({ No }: Props) {
       .catch(err => console.error('SKUs fetch error:', err))
   }, [])
 
-  // Generic PATCH helper
+  /**
+   * Generic PATCH helper that retries once on 409 conflict.
+   */
   async function patchLine(
     no: string,
     sn: number,
     body: Record<string, any>,
-    etag: string
+    etag: string,
+    retry = true
   ) {
     const res = await fetch(
       `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
@@ -106,11 +111,26 @@ export default function PendingRecordsSalesView({ No }: Props) {
         body: JSON.stringify(body),
       }
     )
-    if (!res.ok) throw new Error(`PATCH failed: ${res.status}`)
+
+    if (res.status === 409 && retry) {
+      // Re-fetch fresh ETag for this row
+      const fresh = await fetch(
+        `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})?$select=@odata.etag`,
+        { headers: { Authorization: API_AUTHORIZATION } }
+      )
+      const freshJson = await fresh.json()
+      const freshEtag = freshJson['@odata.etag']
+      // Retry exactly once
+      return patchLine(no, sn, body, freshEtag, false)
+    }
+
+    if (!res.ok) {
+      throw new Error(`PATCH failed: ${res.status}`)
+    }
     return res.json()
   }
 
-  // Handlers for product, SKU, quantity...
+  // Handlers for product, SKU, quantity
   const handleProductChange = async (idx: number, code: string) => {
     const row = lineItems[idx]
     if (!row) return
@@ -126,7 +146,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
           i === idx
             ? {
                 ...r,
-                Product: code,
+                Product_Code: code,
                 Target: updated.Target,
                 '@odata.etag': updated['@odata.etag'],
               }
@@ -134,7 +154,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
         )
       )
     } catch (e) {
-      console.error(e)
+      console.error('Product PATCH error:', e)
     }
   }
 
@@ -164,7 +184,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
         )
       )
     } catch (e) {
-      console.error(e)
+      console.error('SKU PATCH error:', e)
     }
   }
 
@@ -193,11 +213,11 @@ export default function PendingRecordsSalesView({ No }: Props) {
         )
       )
     } catch (e) {
-      console.error(e)
+      console.error('Quantity PATCH error:', e)
     }
   }
 
-  // Create & delete
+  // Create a new blank line
   const createNewLine = async () => {
     try {
       const res = await fetch(`${API_BASE_URL}/NewSalesLines`, {
@@ -212,10 +232,11 @@ export default function PendingRecordsSalesView({ No }: Props) {
       const data = await res.json()
       setLineItems(prev => [...prev, ...data.value])
     } catch (e) {
-      console.error(e)
+      console.error('Create line error:', e)
     }
   }
 
+  // Delete an existing line
   const deleteLine = async (no: string, sn: number) => {
     setLoading(true)
     try {
@@ -226,13 +247,13 @@ export default function PendingRecordsSalesView({ No }: Props) {
       if (!res.ok) throw new Error(`DELETE failed: ${res.status}`)
       setLineItems(prev => prev.filter(r => !(r.No === no && r.SN === sn)))
     } catch (e) {
-      console.error(e)
+      console.error('Delete line error:', e)
     } finally {
       setLoading(false)
     }
   }
 
-  // Submit for approval
+  // Submit header for approval
   const handleSubmitForApproval = async () => {
     if (!header) return
     setLoading(true)
@@ -241,14 +262,14 @@ export default function PendingRecordsSalesView({ No }: Props) {
     try {
       await submitForApproval(No, header['@odata.etag'])
       setMessage('✅ Submitted for approval')
-      setHeader(h => h && { ...h, Status: 'Pending Approval' })
+      setHeader(h => (h ? { ...h, Status: 'Pending Approval' } : h))
 
       setTimeout(() => {
         onClose()
         router.refresh()
       }, 800)
     } catch (e: any) {
-      console.error(e)
+      console.error('Approval error:', e)
       setMessage('❌ Failed to submit for approval')
     } finally {
       setLoading(false)
@@ -311,7 +332,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
                 className="mt-1"
               />
             </div>
-            <div className="flex flex-col">
+            <div className="flex flex-col">  
               <Label className="uppercase text-xs text-gray-600">
                 Outlet
               </Label>
@@ -369,17 +390,10 @@ export default function PendingRecordsSalesView({ No }: Props) {
           </div>
 
           <div className="flex space-x-2">
-            <Button
-              variant="outline"
-              onClick={onClose}
-              disabled={loading}
-            >
+            <Button variant="outline" onClick={onClose} disabled={loading}>
               Cancel
             </Button>
-            <Button
-              onClick={handleSubmitForApproval}
-              disabled={loading}
-            >
+            <Button onClick={handleSubmitForApproval} disabled={loading}>
               {loading ? 'Sending…' : 'Send for Approval'}
             </Button>
           </div>
@@ -413,10 +427,11 @@ export default function PendingRecordsSalesView({ No }: Props) {
                     <TableCell>
                       <select
                         className="border px-2 py-1 rounded"
-                        value={item.Product || ''}
+                        value={item.Product_Code || ''}
                         onChange={e =>
                           handleProductChange(idx, e.target.value)
                         }
+                        disabled={loading}
                       >
                         <option value="">-- select --</option>
                         {products.map(p => (
@@ -434,6 +449,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
                         onChange={e =>
                           handleSKUChange(idx, e.target.value)
                         }
+                        disabled={loading}
                       >
                         <option value="">-- select --</option>
                         {skus.map(s => (
@@ -453,6 +469,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
                         onChange={e =>
                           handleQuantityChange(idx, Number(e.target.value))
                         }
+                        disabled={loading}
                       />
                     </TableCell>
                     <TableCell>{item.Total}</TableCell>
@@ -463,14 +480,15 @@ export default function PendingRecordsSalesView({ No }: Props) {
                         variant="outline"
                         size="sm"
                         onClick={createNewLine}
+                        disabled={loading}
                       >
                         +
                       </Button>
                       <Button
                         variant="destructive"
                         size="sm"
-                        disabled={loading}
                         onClick={() => deleteLine(item.No, item.SN)}
+                        disabled={loading}
                       >
                         ✕
                       </Button>
