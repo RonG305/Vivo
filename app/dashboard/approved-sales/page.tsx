@@ -1,5 +1,5 @@
+
 import { ApprovedSalesList } from '@/components/ApprovedSales/ApprovedSalesList';
-import { PendingSalesList } from '@/components/PendingSales/PendingSales';
 import { RecordSalesList } from '@/components/RecordSales/RecordSalesList';
 import { fetchData } from '@/lib/api';
 import { API_BASE_URL } from '@/lib/constants';

@@ -1,7 +1,7 @@
 'use client'
 
 import React, { useState, useEffect } from 'react'
-import { API_AUTHORIZATION } from '@/lib/constants' 
+import { API_AUTHORIZATION } from '@/lib/constants'
 import { endpoints } from '../../lib/endpoints'
 
 import { useRouter } from 'next/navigation'
@@ -42,7 +42,7 @@ import {
   approveRequest,
   rejectRequest,
 } from '@/lib/api'
- 
+
 import { VivoSalesHeader } from '@/types'
 
 interface Props {
@@ -82,7 +82,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
       try {
         const [hdr, lines] = await Promise.all([
           fetchData<{ value: VivoSalesHeader[] }>(
-            endpoints.recordSales.headerDetails(No)
+            endpoints.recordSales.headerDetails(No),
           ),
           fetchData<{ value: any[] }>(endpoints.recordSales.newSalesLines(No)),
         ])
@@ -141,7 +141,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
     try {
       // Use the helper function to reject the request
       const result = await rejectRequest(No)
-      
+
       // show the returned SN/Code
       setMessage(`✅ Rejected: SN ${result.SN}, Code ${result.Code}.`)
       setOpenReject(false)
@@ -340,7 +340,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
             {/* Approve */}
             <Dialog open={openApprove} onOpenChange={setOpenApprove}>
               <DialogTrigger asChild>
-                <Button variant="outline" disabled={loading}>
+                <Button className="bg-green-500 text-white hover:bg-green-600 shadow-md transition-colors" disabled={loading}>
                   <CheckIcon className="w-5 h-5 mr-1" />
                   Approve
                 </Button>
@@ -411,7 +411,7 @@ export default function PendingRecordsSalesView({ No }: Props) {
                     <Textarea
                       id="comment"
                       value={commentText}
-                      onChange={(e) => setCommentText(e.target.value)}
+                      onChange={e => setCommentText(e.target.value)}
                       rows={4}
                       placeholder="Enter reason or comment"
                       disabled={commentLoading}
