@@ -1,8 +1,9 @@
-// components/RecordSales/PendingRecordSalesView.tsx
-
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import React, { useState, useEffect } from 'react'
+import { API_AUTHORIZATION } from '@/lib/constants' 
+import { endpoints } from '../../lib/endpoints'
+
 import { useRouter } from 'next/navigation'
 import {
   Dialog,
@@ -12,6 +13,13 @@ import {
   DialogTitle,
   DialogDescription,
 } from '../ui/dialog'
+import {
+  ArrowUturnLeftIcon,
+  CheckIcon,
+  XMarkIcon,
+  ChatBubbleLeftIcon,
+} from '@heroicons/react/24/solid'
+
 import { Button } from '../ui/button'
 import { Label } from '../ui/label'
 import { Input } from '../ui/input'
@@ -19,15 +27,23 @@ import { Card } from '../ui/card'
 import {
   Table,
   TableBody,
-  TableCaption,
   TableCell,
   TableHead,
   TableHeader,
   TableRow,
+  TableCaption,
 } from '../ui/table'
-import { API_BASE_URL, API_AUTHORIZATION } from '@/lib/constants'
-import { submitForApproval } from '@/lib/api'
-import { VivoProduct, ProductSKU, VivoSalesHeader } from '@/types'
+import { Textarea } from '../ui/textarea'
+
+import {
+  fetchData,
+  submitForApproval,
+  returnBackToOpen,
+  approveRequest,
+  rejectRequest,
+} from '@/lib/api'
+ 
+import { VivoSalesHeader } from '@/types'
 
 interface Props {
   No: string
@@ -35,244 +51,153 @@ interface Props {
 
 export default function PendingRecordsSalesView({ No }: Props) {
   const router = useRouter()
+
+  // Dialog open state
   const [open, setOpen] = useState(false)
   const onClose = () => setOpen(false)
 
+  // Fetched data
   const [header, setHeader] = useState<VivoSalesHeader | null>(null)
   const [lineItems, setLineItems] = useState<any[]>([])
-  const [products, setProducts] = useState<VivoProduct[]>([])
-  const [skus, setSkus] = useState<ProductSKU[]>([])
-  const [message, setMessage] = useState<string>('')
-  const [loading, setLoading] = useState<boolean>(false)
 
-  // 1. Fetch header when dialog opens
+  // UI state
+  const [loading, setLoading] = useState(false)
+  const [message, setMessage] = useState('')
+  const [openReturn, setOpenReturn] = useState(false)
+  const [openApprove, setOpenApprove] = useState(false)
+  const [openReject, setOpenReject] = useState(false)
+
+  // For the “Comment” dialog
+  const [openComment, setOpenComment] = useState(false)
+  const [commentText, setCommentText] = useState('')
+  const [commentLoading, setCommentLoading] = useState(false)
+  const [commentError, setCommentError] = useState('')
+
+  // Fetch header + lines when dialog opens
   useEffect(() => {
     if (!No || !open) return
-    fetch(
-      `${API_BASE_URL}/NewOpenSalesList_2?$filter=No eq '${No}'`,
-      { headers: { Authorization: API_AUTHORIZATION } }
-    )
-      .then(r => r.json())
-      .then(d => setHeader(d.value?.[0] || null))
-      .catch(err => console.error('Header fetch error:', err))
-  }, [No, open])
 
-  // 2. Fetch line items when dialog opens
-  useEffect(() => {
-    if (!No || !open) return
-    fetch(
-      `${API_BASE_URL}/NewSalesLines?$filter=No eq '${No}'`,
-      { headers: { Authorization: API_AUTHORIZATION } }
-    )
-      .then(r => r.json())
-      .then(d => setLineItems(d.value || []))
-      .catch(err => console.error('Lines fetch error:', err))
-  }, [No, open])
-
-  // 3. Fetch product master
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/vivoproducts`, {
-      headers: { Authorization: API_AUTHORIZATION },
-    })
-      .then(r => r.json())
-      .then(d => setProducts(d.value || []))
-      .catch(err => console.error('Products fetch error:', err))
-  }, [])
-
-  // 4. Fetch SKU master
-  useEffect(() => {
-    fetch(`${API_BASE_URL}/LubricantSKUs`, {
-      headers: { Authorization: API_AUTHORIZATION },
-    })
-      .then(r => r.json())
-      .then(d => setSkus(d.value || []))
-      .catch(err => console.error('SKUs fetch error:', err))
-  }, [])
-
-  /**
-   * Generic PATCH helper that retries once on 409 conflict.
-   */
-  async function patchLine(
-    no: string,
-    sn: number,
-    body: Record<string, any>,
-    etag: string,
-    retry = true
-  ) {
-    const res = await fetch(
-      `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
-      {
-        method: 'PATCH',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: API_AUTHORIZATION,
-          'If-Match': etag,
-        },
-        body: JSON.stringify(body),
+    const fetchAll = async () => {
+      setLoading(true)
+      try {
+        const [hdr, lines] = await Promise.all([
+          fetchData<{ value: VivoSalesHeader[] }>(
+            endpoints.recordSales.headerDetails(No)
+          ),
+          fetchData<{ value: any[] }>(endpoints.recordSales.newSalesLines(No)),
+        ])
+        setHeader(hdr.value?.[0] ?? null)
+        setLineItems(lines.value ?? [])
+      } catch (err) {
+        console.error('Data fetch error:', err)
+        setMessage('❌ Failed to fetch sales data.')
+      } finally {
+        setLoading(false)
       }
-    )
-
-    if (res.status === 409 && retry) {
-      // Re-fetch fresh ETag for this row
-      const fresh = await fetch(
-        `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})?$select=@odata.etag`,
-        { headers: { Authorization: API_AUTHORIZATION } }
-      )
-      const freshJson = await fresh.json()
-      const freshEtag = freshJson['@odata.etag']
-      // Retry exactly once
-      return patchLine(no, sn, body, freshEtag, false)
     }
 
-    if (!res.ok) {
-      throw new Error(`PATCH failed: ${res.status}`)
-    }
-    return res.json()
-  }
+    fetchAll()
+  }, [No, open])
 
-  // Handlers for product, SKU, quantity
-  const handleProductChange = async (idx: number, code: string) => {
-    const row = lineItems[idx]
-    if (!row) return
-    try {
-      const updated = await patchLine(
-        row.No,
-        row.SN,
-        { Product_Code: code },
-        row['@odata.etag']
-      )
-      setLineItems(prev =>
-        prev.map((r, i) =>
-          i === idx
-            ? {
-                ...r,
-                Product_Code: code,
-                Target: updated.Target,
-                '@odata.etag': updated['@odata.etag'],
-              }
-            : r
-        )
-      )
-    } catch (e) {
-      console.error('Product PATCH error:', e)
-    }
-  }
-
-  const handleSKUChange = async (idx: number, code: string) => {
-    const row = lineItems[idx]
-    if (!row) return
-    try {
-      const updated = await patchLine(
-        row.No,
-        row.SN,
-        { SKU_Code: code },
-        row['@odata.etag']
-      )
-      setLineItems(prev =>
-        prev.map((r, i) =>
-          i === idx
-            ? {
-                ...r,
-                SKU_Code: code,
-                SKU_Liters: updated.SKU_Liters,
-                Grade: updated.SKU_Grade,
-                Total: updated.Total,
-                Quantity: updated.Quantity,
-                '@odata.etag': updated['@odata.etag'],
-              }
-            : r
-        )
-      )
-    } catch (e) {
-      console.error('SKU PATCH error:', e)
-    }
-  }
-
-  const handleQuantityChange = async (idx: number, qty: number) => {
-    const row = lineItems[idx]
-    if (!row) return
-    try {
-      const updated = await patchLine(
-        row.No,
-        row.SN,
-        { Quantity: qty },
-        row['@odata.etag']
-      )
-      setLineItems(prev =>
-        prev.map((r, i) =>
-          i === idx
-            ? {
-                ...r,
-                Quantity: updated.Quantity,
-                Total: updated.Total,
-                SKU_Ratio: updated.SKU_Ratio,
-                Commission_Earned: updated.Commission_Earned,
-                '@odata.etag': updated['@odata.etag'],
-              }
-            : r
-        )
-      )
-    } catch (e) {
-      console.error('Quantity PATCH error:', e)
-    }
-  }
-
-  // Create a new blank line
-  const createNewLine = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/NewSalesLines`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: API_AUTHORIZATION,
-        },
-        body: JSON.stringify({ No }),
-      })
-      if (!res.ok) throw new Error(`POST failed: ${res.status}`)
-      const data = await res.json()
-      setLineItems(prev => [...prev, ...data.value])
-    } catch (e) {
-      console.error('Create line error:', e)
-    }
-  }
-
-  // Delete an existing line
-  const deleteLine = async (no: string, sn: number) => {
+  /** Return to Open */
+  async function handleConfirmReturn() {
     setLoading(true)
+    setMessage('')
     try {
-      const res = await fetch(
-        `${API_BASE_URL}/NewSalesLines(No='${no}',SN=${sn})`,
-        { method: 'DELETE', headers: { Authorization: API_AUTHORIZATION } }
-      )
-      if (!res.ok) throw new Error(`DELETE failed: ${res.status}`)
-      setLineItems(prev => prev.filter(r => !(r.No === no && r.SN === sn)))
-    } catch (e) {
-      console.error('Delete line error:', e)
+      await returnBackToOpen(No)
+      setMessage('✅ Returned to Open successfully.')
+      setOpenReturn(false)
+      router.refresh()
+    } catch (err) {
+      console.error('ReturnBackToOpen error:', err)
+      setMessage('❌ Failed to return to Open.')
     } finally {
       setLoading(false)
     }
   }
 
-  // Submit header for approval
-  const handleSubmitForApproval = async () => {
-    if (!header) return
+  /** Approve request */
+  async function handleConfirmApprove() {
+    setLoading(true)
+    setMessage('')
+    try {
+      await approveRequest(No)
+      setMessage('✅ Approved successfully.')
+      setOpenApprove(false)
+      router.refresh()
+    } catch (err) {
+      console.error('ApproveRequest error:', err)
+      setMessage('❌ Approval failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  /** Reject request, sending commentText as Description */
+  async function handleConfirmReject() {
     setLoading(true)
     setMessage('')
 
     try {
-      await submitForApproval(No, header['@odata.etag'])
-      setMessage('✅ Submitted for approval')
-      setHeader(h => (h ? { ...h, Status: 'Pending Approval' } : h))
+      // Use the helper function to reject the request
+      const result = await rejectRequest(No)
+      
+      // show the returned SN/Code
+      setMessage(`✅ Rejected: SN ${result.SN}, Code ${result.Code}.`)
+      setOpenReject(false)
+      router.refresh()
+    } catch (err) {
+      console.error('RejectRequest error:', err)
+      setMessage('❌ Rejection failed.')
+    } finally {
+      setLoading(false)
+    }
+  }
 
+  /** Submit for approval */
+  const handleSubmitForApproval = async () => {
+    setLoading(true)
+    setMessage('')
+    try {
+      await submitForApproval(No)
+      setMessage('✅ Submitted for approval.')
       setTimeout(() => {
         onClose()
         router.refresh()
       }, 800)
-    } catch (e: any) {
-      console.error('Approval error:', e)
-      setMessage('❌ Failed to submit for approval')
+    } catch (err) {
+      console.error('Approval error:', err)
+      setMessage('❌ Failed to submit for approval.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  /** Close & reset comment dialog */
+  const closeCommentDialog = () => {
+    setOpenComment(false)
+    setCommentText('')
+    setCommentError('')
+  }
+
+  /** Submit a standalone comment (not the reject reason) */
+  const handleSubmitComment = async () => {
+    if (!commentText.trim()) {
+      setCommentError('Comment cannot be empty.')
+      return
+    }
+    setCommentLoading(true)
+    setCommentError('')
+    try {
+      // TODO: wire actual “post comment” API
+      console.log('Submitting comment:', commentText, 'for sale No:', No)
+      setMessage('✅ Comment submitted successfully.')
+      closeCommentDialog()
+    } catch (err) {
+      console.error('Comment submission failed:', err)
+      setCommentError('Failed to submit comment.')
+    } finally {
+      setCommentLoading(false)
     }
   }
 
@@ -298,9 +223,9 @@ export default function PendingRecordsSalesView({ No }: Props) {
         )}
 
         <DialogHeader className="px-4 py-3 border-b">
-          <DialogTitle>Record Sales #{No}</DialogTitle>
+          <DialogTitle>Pending Sale #{No}</DialogTitle>
           <DialogDescription>
-            Review and adjust individual lines.
+            Review and decide to Return, Approve, Reject or Comment.
           </DialogDescription>
         </DialogHeader>
 
@@ -308,14 +233,12 @@ export default function PendingRecordsSalesView({ No }: Props) {
           <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
             <div className="flex flex-col">
               <Label className="uppercase text-xs text-gray-600">
-                Captured By
+                Sale No
               </Label>
               <Input defaultValue={No} readOnly className="mt-1" />
             </div>
             <div className="flex flex-col">
-              <Label className="uppercase text-xs text-gray-600">
-                Region
-              </Label>
+              <Label className="uppercase text-xs text-gray-600">Region</Label>
               <Input
                 defaultValue={header?.Region_Name || ''}
                 readOnly
@@ -332,10 +255,8 @@ export default function PendingRecordsSalesView({ No }: Props) {
                 className="mt-1"
               />
             </div>
-            <div className="flex flex-col">  
-              <Label className="uppercase text-xs text-gray-600">
-                Outlet
-              </Label>
+            <div className="flex flex-col">
+              <Label className="uppercase text-xs text-gray-600">Outlet</Label>
               <Input
                 defaultValue={header?.Outlet_Name || ''}
                 readOnly
@@ -390,12 +311,135 @@ export default function PendingRecordsSalesView({ No }: Props) {
           </div>
 
           <div className="flex space-x-2">
-            <Button variant="outline" onClick={onClose} disabled={loading}>
-              Cancel
-            </Button>
-            <Button onClick={handleSubmitForApproval} disabled={loading}>
-              {loading ? 'Sending…' : 'Send for Approval'}
-            </Button>
+            {/* Return */}
+            <Dialog open={openReturn} onOpenChange={setOpenReturn}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={loading}>
+                  <ArrowUturnLeftIcon className="w-5 h-5 mr-1" />
+                  Return to Open
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Return to Open?</DialogTitle>
+                </DialogHeader>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenReturn(false)}
+                  >
+                    No
+                  </Button>
+                  <Button onClick={handleConfirmReturn} disabled={loading}>
+                    Yes
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Approve */}
+            <Dialog open={openApprove} onOpenChange={setOpenApprove}>
+              <DialogTrigger asChild>
+                <Button variant="outline" disabled={loading}>
+                  <CheckIcon className="w-5 h-5 mr-1" />
+                  Approve
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Approve Record?</DialogTitle>
+                </DialogHeader>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenApprove(false)}
+                  >
+                    No
+                  </Button>
+                  <Button onClick={handleConfirmApprove} disabled={loading}>
+                    Yes
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Reject */}
+            <Dialog open={openReject} onOpenChange={setOpenReject}>
+              <DialogTrigger asChild>
+                <Button variant="destructive" disabled={loading}>
+                  <XMarkIcon className="w-5 h-5 mr-1" />
+                  Reject
+                </Button>
+              </DialogTrigger>
+              <DialogContent>
+                <DialogHeader>
+                  <DialogTitle>Reject Record?</DialogTitle>
+                </DialogHeader>
+                <div className="flex justify-end space-x-2 pt-4">
+                  <Button
+                    variant="outline"
+                    onClick={() => setOpenReject(false)}
+                  >
+                    No
+                  </Button>
+                  <Button
+                    variant="destructive"
+                    onClick={handleConfirmReject}
+                    disabled={loading}
+                  >
+                    Yes
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
+
+            {/* Comment */}
+            <Dialog open={openComment} onOpenChange={setOpenComment}>
+              <DialogTrigger asChild>
+                <Button variant="ghost" disabled={loading}>
+                  <ChatBubbleLeftIcon className="h-5 w-5" />
+                  Comment
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-md max-w-full p-6">
+                <DialogHeader>
+                  <DialogTitle>Add Comment for No: {No}</DialogTitle>
+                </DialogHeader>
+                <div className="mt-4 space-y-4">
+                  <div className="flex flex-col">
+                    <Label htmlFor="comment">Reason / Comment</Label>
+                    <Textarea
+                      id="comment"
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      rows={4}
+                      placeholder="Enter reason or comment"
+                      disabled={commentLoading}
+                    />
+                    {commentError && (
+                      <p className="text-destructive text-sm mt-1">
+                        {commentError}
+                      </p>
+                    )}
+                  </div>
+                </div>
+                <div className="mt-6 flex justify-end gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={closeCommentDialog}
+                    disabled={commentLoading}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    onClick={handleSubmitComment}
+                    disabled={commentLoading || !commentText.trim()}
+                  >
+                    {commentLoading ? 'Submitting…' : 'Submit'}
+                  </Button>
+                </div>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
@@ -416,7 +460,6 @@ export default function PendingRecordsSalesView({ No }: Props) {
                   <TableHead>Total</TableHead>
                   <TableHead>SKU Ratio</TableHead>
                   <TableHead>Commission</TableHead>
-                  <TableHead>Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -424,75 +467,15 @@ export default function PendingRecordsSalesView({ No }: Props) {
                   <TableRow key={`${item.No}-${item.SN}-${idx}`}>
                     <TableCell>{item.Officer_Name}</TableCell>
                     <TableCell>{item.Role_Name}</TableCell>
-                    <TableCell>
-                      <select
-                        className="border px-2 py-1 rounded"
-                        value={item.Product_Code || ''}
-                        onChange={e =>
-                          handleProductChange(idx, e.target.value)
-                        }
-                        disabled={loading}
-                      >
-                        <option value="">-- select --</option>
-                        {products.map(p => (
-                          <option key={p.Code} value={p.Code}>
-                            {p.Description}
-                          </option>
-                        ))}
-                      </select>
-                    </TableCell>
+                    <TableCell>{item.Product_Code}</TableCell>
                     <TableCell>{item.Target}</TableCell>
-                    <TableCell>
-                      <select
-                        className="border px-2 py-1 rounded"
-                        value={item.SKU_Code || ''}
-                        onChange={e =>
-                          handleSKUChange(idx, e.target.value)
-                        }
-                        disabled={loading}
-                      >
-                        <option value="">-- select --</option>
-                        {skus.map(s => (
-                          <option key={s.SKU_Code} value={s.SKU_Code}>
-                            {s.SKU_Name}
-                          </option>
-                        ))}
-                      </select>
-                    </TableCell>
+                    <TableCell>{item.SKU_Code}</TableCell>
                     <TableCell>{item.SKU_Liters}</TableCell>
                     <TableCell>{item.Grade}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="number"
-                        className="w-20"
-                        value={item.Quantity || ''}
-                        onChange={e =>
-                          handleQuantityChange(idx, Number(e.target.value))
-                        }
-                        disabled={loading}
-                      />
-                    </TableCell>
+                    <TableCell>{item.Quantity}</TableCell>
                     <TableCell>{item.Total}</TableCell>
                     <TableCell>{item.SKU_Ratio}</TableCell>
                     <TableCell>{item.Commission_Earned}</TableCell>
-                    <TableCell className="flex space-x-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={createNewLine}
-                        disabled={loading}
-                      >
-                        +
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => deleteLine(item.No, item.SN)}
-                        disabled={loading}
-                      >
-                        ✕
-                      </Button>
-                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

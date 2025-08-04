@@ -1,13 +1,25 @@
 import { Buffer } from 'buffer'
 
+/** Logo asset path */
 export const VIVO_LOGO = '/images/vivo.jpg'
 
-// This URL already includes the /ODataV4/Company('VIVO') segment
-export const API_BASE_URL = process.env.NEXT_PUBLIC_API_BASE_URL!
+/**
+ * Base URL for all OData V4 endpoints.
+ * Should include the `/ODataV4/Company('VIVO')` segment.
+ */
+export const API_BASE_URL =
+  process.env.NEXT_PUBLIC_API_BASE_URL ||
+  "http://109.123.250.165:8048/VIVOAPI/ODataV4/Company('VIVO')"
 
-const username = process.env.NEXT_PUBLIC_API_USERNAME!
-const password = process.env.NEXT_PUBLIC_API_PASSWORD!
+const username = process.env.NEXT_PUBLIC_API_USERNAME
+const password = process.env.NEXT_PUBLIC_API_PASSWORD
 
-export const API_AUTHORIZATION = `Basic ${
-  Buffer.from(`${username}:${password}`).toString('base64')
-}`
+if (!username || !password) {
+  console.warn(
+    '[constants] NEXT_PUBLIC_API_USERNAME or NEXT_PUBLIC_API_PASSWORD is not set'
+  )
+}
+
+export const API_AUTHORIZATION = username && password
+  ? `Basic ${Buffer.from(`${username}:${password}`).toString('base64')}`
+  : ''

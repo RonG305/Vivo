@@ -1,111 +1,111 @@
 'use client'
 
 import React, { useEffect, useState, useTransition } from 'react'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '../ui/dialog'
 import { Button } from '../ui/button'
-import { Icon } from '@iconify/react/dist/iconify.js'
-import { Input } from '../ui/input'
 import { createSalesHeader } from './actions'
 import { useRouter } from 'next/navigation'
 import RecordSalesForm from './RecordSalesForm'
+import type { VivoSalesHeader, VivoUserSessionDetails } from '@/types'
 
-interface HeaderCardProps {
-   "@odata.etag": string
-   Region_Code: string
-   Outlet_Code: string
-}
+/**
+ * Minimum header fields needed both to create a new header
+ * and to pass into RecordSalesForm afterward.
+ */
+type NewHeaderFields = Pick<
+  VivoSalesHeader,
+  '@odata.etag' | 'Region_Code' | 'Outlet_Code' | 'Region_Name' | 'Outlet_Name'
+>
 
-const CreateNewHeaderCopy = () => {
-   const [isPending, startTransition] = useTransition()
-   const [state, formAction] = React.useActionState(createSalesHeader, null)
-   const router = useRouter()
-   const [createdNo, setCreatedNo] = useState<string | null>(null)
-   const [newSaleHeader, setNewSaleHeader] = useState({})
-   const [isOPen, setOpen] = useState<boolean>(false)
+export default function CreateNewHeaderCopy() {
+  const [isPending, startTransition] = useTransition()
+  const [actionState, formAction] = React.useActionState(createSalesHeader, null)
+  const router = useRouter()
 
-   const [formData, setFormData] = useState<HeaderCardProps>({
-      "@odata.etag": "",
-      Region_Code: "",
-      Outlet_Code: "",
-   })
+  // holds the brand-new header once created
+  const [createdHeader, setCreatedHeader] = useState<VivoSalesHeader | null>(
+    null
+  )
 
-   useEffect(() => {
-      const stored = localStorage.getItem("vivoUser")
+  // initial form values come from the stored session
+  const [formData, setFormData] = useState<NewHeaderFields>({
+    '@odata.etag': '',
+    Region_Code: '',
+    Outlet_Code: '',
+    Region_Name: '',
+    Outlet_Name: '',
+  })
 
-      if (stored) {
-         try {
-            const vivoUser = JSON.parse(stored)
-            console.log("Parsed Vivo User:", vivoUser)
+  // hydrate from localStorage (your VivoUserSessionDetails shape)
+  useEffect(() => {
+    const stored = localStorage.getItem('vivoUser')
+    if (!stored) return
 
-            setFormData({
-               "@odata.etag": vivoUser["@odata.etag"] || "",
-               Region_Code: vivoUser["region_code"] || "",
-               Outlet_Code: vivoUser["outlet_code"] || "",
-            })
-         } catch (err) {
-            console.error("Error parsing vivoUser from localStorage", err)
-         }
-      }
-   }, [])
+    try {
+      const vivoUser = JSON.parse(stored) as VivoUserSessionDetails
 
-   const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-      event.preventDefault()
-      const formData = new FormData(event.currentTarget)
-      startTransition(() => {
-         formAction(formData)
+      setFormData({
+        '@odata.etag': vivoUser['@odata.etag'] || '',
+        Region_Code: vivoUser.region_code,
+        Outlet_Code: vivoUser.outlet_code,
+        Region_Name: vivoUser.region,
+        Outlet_Name: vivoUser.outlet,
       })
-   }
+    } catch (err) {
+      console.error('Error parsing vivoUser:', err)
+    }
+  }, [])
 
-   // useEffect(() => {
-   //    if (state?.success) {
-   //       console.log("Created successfully")
-   //       router.refresh()
-   //    } else if (state?.error) {
-   //       console.log('Error during creation', state?.error)
-   //    }
-   // }, [state, router])
+  // when the action completes successfully, cache the new header
+  useEffect(() => {
+    if (actionState?.success && actionState.data) {
+      setCreatedHeader(actionState.data as VivoSalesHeader)
+      router.refresh()
+    }
+  }, [actionState, router])
 
-   useEffect(() => {
-      if (state?.success && state.data?.No) {
-         setCreatedNo(state.data.No)
-         console.log("Created No:", state.data.No)
-         setNewSaleHeader(state.data)
-         router.refresh()
-      }
-   }, [state, router])
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault()
+    startTransition(() => {
+      formAction(new FormData(e.currentTarget))
+    })
+  }
 
-   return (
-      <>
-      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4 ">
-         <div className='hidden'>
-            <Input
-               name="@odata.etag"
-               placeholder="ETag"
-               defaultValue={formData["@odata.etag"]}
-               readOnly
-            />
-            <Input
-               name="Region_Code"
-               placeholder="Region Code"
-               defaultValue={formData.Region_Code}
-               readOnly
-            />
-            <Input
-               name="Outlet_Code"
-               placeholder="Outlet Code"
-               defaultValue={formData.Outlet_Code}
-               readOnly
-            />
+  return (
+    <>
+      <form
+        onSubmit={handleSubmit}
+        className="flex flex-col gap-4 mt-4"
+      >
+        {/* hidden inputs for the unbound createSalesHeader action */}
+        <input
+          type="hidden"
+          name="@odata.etag"
+          value={formData['@odata.etag']}
+        />
+        <input
+          type="hidden"
+          name="Region_Code"
+          value={formData.Region_Code}
+        />
+        <input
+          type="hidden"
+          name="Outlet_Code"
+          value={formData.Outlet_Code}
+        />
 
-         </div>
-         <Button type="submit" className="mt-2">
-            {isPending ? "Submitting..." : "Add New Sale"}
-         </Button>
-         </form>
-         
-         {createdNo && <RecordSalesForm header={newSaleHeader} No={createdNo || ""} onClose={() => setCreatedNo(null)} />}
-      </>
-   )
+        <Button type="submit" disabled={isPending}>
+          {isPending ? 'Submitting...' : 'Add New Sale'}
+        </Button>
+      </form>
+
+      {/* once created, open the RecordSalesForm with the new header */}
+      {createdHeader && (
+        <RecordSalesForm
+          header={createdHeader}
+          No={createdHeader.No}
+          onClose={() => setCreatedHeader(null)}
+        />
+      )}
+    </>
+  )
 }
-
-export default CreateNewHeaderCopy

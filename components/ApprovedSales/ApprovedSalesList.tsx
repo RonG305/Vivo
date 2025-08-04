@@ -1,3 +1,4 @@
+//components/ApprovedSales/ApprovedSalesList.tsx
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow, TableCaption, TableFooter } from "@/components/ui/table"
 import { Card } from "../ui/card"
 import { VivoSalesHeader } from "@/types"

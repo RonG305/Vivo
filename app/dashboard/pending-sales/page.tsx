@@ -1,24 +1,31 @@
 // app/dashboard/pending-sales/page.tsx
+
 import React from 'react'
 import { redirect } from 'next/navigation'
-import { PendingSalesList } from '@/components/PendingSales/PendingSales'
 import { fetchData } from '@/lib/api'
 import { API_BASE_URL } from '@/lib/constants'
 import { getUserData } from '@/lib/get-user'
-import { VivoSalesHeader } from '@/types'
+import PendingSalesList from '@/components/PendingSales/PendingSalesList'
+import type { VivoSalesHeader } from '@/types'
 
-export default async function PendingSalesPage() {
+const page = async () => {
+  // 1) Grab the logged-in user
   const user = await getUserData()
-  if (!user) redirect('/login')
 
-  // build the exact URL you showed us:
-  const filter = `Region_Code eq '${user.region_code}' and Outlet_Code eq '${user.outlet_code}'`
-  const url = `${API_BASE_URL}/NewPendingSalesList2?$filter=${encodeURIComponent(filter)}`
+  // 2) If there's no session, kick them to login
+  if (!user) {
+    redirect('/login')
+  }
 
-  console.log('[PendingSalesPage] fetching →', url)
-  const raw = await fetchData<{ value: VivoSalesHeader[] }>(url)
-  console.log('[PendingSalesPage] raw fetch →', raw)
+  // 3) Fetch pending sales filtered by region & outlet
+  const { value: pending = [] } = await fetchData<{ value: VivoSalesHeader[] }>(
+    `${API_BASE_URL}/NewPendingSalesList2` +
+      `?$filter=Region_Code eq '${encodeURIComponent(user.region_code)}'` +
+      ` and Outlet_Code eq '${encodeURIComponent(user.outlet_code)}'`
+  )
 
-  const pending: VivoSalesHeader[] = raw.value ?? []
+  // 4) Render your list
   return <PendingSalesList data={pending} />
 }
+
+export default page

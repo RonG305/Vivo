@@ -1,5 +1,3 @@
-// lib/api.ts
-
 import { API_AUTHORIZATION } from './constants'
 import { endpoints } from './endpoints'
 
@@ -36,7 +34,6 @@ export async function fetchData<T = any>(
 
 /**
  * Generic POST helper with no-store caching and automatic Basic auth.
- * Returns {} for 204 No Content.
  */
 export async function createData<T = any, U = any>(
   url: string,
@@ -69,7 +66,6 @@ export async function createData<T = any, U = any>(
 
 /**
  * Generic PATCH helper with no-store caching and automatic Basic auth.
- * Returns {} for 204 No Content.
  */
 export async function updateData<T = any, U = any>(
   url: string,
@@ -102,7 +98,6 @@ export async function updateData<T = any, U = any>(
 
 /**
  * Generic DELETE helper with no-store caching and automatic Basic auth.
- * Returns {} for 204 No Content.
  */
 export async function deleteData<U = any>(
   url: string,
@@ -133,14 +128,13 @@ export async function deleteData<U = any>(
 
 /**
  * Invoke the unbound SendRequestForApproval OData action.
- * Passes the sales document number as `{ Code: <code> }` in the JSON body,
- * and optionally includes an If-Match header for concurrency control.
  */
 export async function submitForApproval(
   code: string,
   etag?: string
 ): Promise<ApprovalResult> {
-  const url = endpoints.sendRequestForApproval()
+  const url = endpoints.actions.sendRequestForApproval()
+  const payload = { Code: code }
   const headers: Record<string, string> = {
     'Content-Type': 'application/json',
     Authorization: API_AUTHORIZATION,
@@ -151,7 +145,7 @@ export async function submitForApproval(
     method: 'POST',
     cache: 'no-store',
     headers,
-    body: JSON.stringify({ Code: code }),
+    body: JSON.stringify(payload),
   })
 
   if (!res.ok) {
@@ -171,19 +165,75 @@ export async function submitForApproval(
  * Invoke the unbound ReturnBackToOpen OData action.
  */
 export async function returnBackToOpen(code: string): Promise<void> {
-  await createData(endpoints.returnBackToOpen(), { Code: code })
+  const url = endpoints.actions.returnBackToOpen()
+  const payload = { Code: code }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: API_AUTHORIZATION,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    console.error(`[returnBackToOpen] HTTP ${res.status}:`, text)
+    throw new Error(`returnBackToOpen failed (${res.status}): ${text}`)
+  }
 }
 
 /**
  * Invoke the unbound ApproveRequest OData action.
  */
 export async function approveRequest(code: string): Promise<void> {
-  await createData(endpoints.approveRequest(), { Code: code })
+  const url = endpoints.actions.approveRequest()
+  const payload = { Code: code }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: API_AUTHORIZATION,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    console.error(`[approveRequest] HTTP ${res.status}:`, text)
+    throw new Error(`approveRequest failed (${res.status}): ${text}`)
+  }
 }
 
 /**
  * Invoke the unbound RejectRequest OData action.
+ * This version has been updated to match the component's call, which does not
+ * include a comment. The payload now only contains the sales record number.
  */
-export async function rejectRequest(code: string): Promise<void> {
-  await createData(endpoints.rejectRequest(), { Code: code })
+export async function rejectRequest(code: string): Promise<ApprovalResult> {
+  const url = endpoints.actions.rejectRequest()
+  const payload = { Code: code }
+
+  const res = await fetch(url, {
+    method: 'POST',
+    cache: 'no-store',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: API_AUTHORIZATION,
+    },
+    body: JSON.stringify(payload),
+  })
+
+  if (!res.ok) {
+    const text = await res.text()
+    console.error(`[rejectRequest] HTTP ${res.status}:`, text)
+    throw new Error(`rejectRequest failed (${res.status}): ${text}`)
+  }
+
+  const result = (await res.json()) as ApprovalResult
+  return result
 }

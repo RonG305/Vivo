@@ -1,4 +1,5 @@
-import { PendingSalesList } from '@/components/PendingSales/PendingSales';
+import PendingSalesList from '@/components/PendingSales/PendingSalesList'
+
 import { RecordSalesList } from '@/components/RecordSales/RecordSalesList';
 import { RejectedSalesList } from '@/components/RejectedSales.tsx/RejectedSales';
 import { fetchData } from '@/lib/api';
