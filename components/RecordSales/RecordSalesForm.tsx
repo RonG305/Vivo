@@ -1,5 +1,3 @@
-// components/RecordSales/RecordSalesForm.tsx
-
 'use client'
 
 import React, { useEffect, useState, FormEvent } from 'react'
@@ -9,12 +7,12 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '../ui/dialog'
-import { Button } from '../ui/button'
+} from '@/components/ui/dialog'
+import { Button } from '@/components/ui/button'
 import { Icon } from '@iconify/react/dist/iconify.js'
-import { Label } from '../ui/label'
-import { Input } from '../ui/input'
-import { Card } from '../ui/card'
+import { Label } from '@/components/ui/label'
+import { Input } from '@/components/ui/input'
+import { Card } from '@/components/ui/card'
 import {
   Table,
   TableCaption,
@@ -23,7 +21,7 @@ import {
   TableHead,
   TableBody,
   TableCell,
-} from '../ui/table'
+} from '@/components/ui/table'
 import { API_AUTHORIZATION, API_BASE_URL } from '@/lib/constants'
 import { submitForApproval } from '@/lib/api'
 import { VivoProduct, ProductSKU } from '@/types'
@@ -153,6 +151,105 @@ export default function RecordSalesForm({
   const handleQuantityChange = (i: number, qty: number) =>
     handlePatch(i, { Quantity: qty }, 'Quantity')
 
+  /**
+   * Deletes a sales line from the API and updates the local state.
+   * @param idx The index of the line item to delete.
+   */
+  async function handleDeleteLine(idx: number) {
+    const itemToDelete = lineItems[idx]
+    if (!itemToDelete) return
+
+    // Set updating flag for the row
+    setLineItems(rows =>
+      rows.map((r, i) => (i === idx ? { ...r, isUpdating: true } : r))
+    )
+
+    const url = `${API_BASE_URL}/NewSalesLines(No='${itemToDelete.No}',SN=${itemToDelete.SN})`
+    try {
+      const res = await fetch(url, {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: API_AUTHORIZATION,
+          'If-Match': itemToDelete['@odata.etag'],
+        },
+      })
+
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(`HTTP ${res.status}: ${txt}`)
+      }
+
+      setLineItems(rows => rows.filter((_, i) => i !== idx))
+      setToast({ type: 'success', message: 'Sales line deleted successfully.' })
+    } catch (err: any) {
+      console.error(err)
+      setLineItems(rows =>
+        rows.map((r, i) => (i === idx ? { ...r, isUpdating: false } : r))
+      )
+      setToast({
+        type: 'error',
+        message: `Failed to delete sales line: ${err.message}`,
+      })
+    }
+  }
+
+  /**
+   * Adds a new, empty sales line via the API and inserts it below the specified index.
+   * We're now sending a minimal payload to let the backend auto-generate most fields.
+   */
+  async function handleAddEmptyLineAfter(idx: number) {
+    const row = lineItems[idx]
+    if (!row) return
+
+    setLineItems(rows =>
+      rows.map((r, i) => (i === idx ? { ...r, isUpdating: true } : r))
+    )
+
+    // The most minimal and safest payload is just the 'No' to link the new line.
+    // The backend should handle generating the rest of the fields with default values.
+    const newPayload = {
+      No: row.No,
+    }
+
+    const url = `${API_BASE_URL}/NewSalesLines`
+    console.log('Sending POST request to:', url, 'with payload:', newPayload)
+    try {
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: API_AUTHORIZATION,
+        },
+        body: JSON.stringify(newPayload),
+      })
+
+      if (!res.ok) {
+        const txt = await res.text()
+        throw new Error(`HTTP ${res.status}: ${txt}`)
+      }
+
+      const newLine = await res.json()
+      setLineItems(rows => {
+        const newRows = [...rows]
+        // Insert the new line after the current index
+        newRows.splice(idx + 1, 0, { ...newLine, isUpdating: false })
+        // Set the original row back to not updating
+        return newRows.map((r, i) => (i === idx ? { ...r, isUpdating: false } : r))
+      })
+      setToast({ type: 'success', message: 'New sales line added.' })
+    } catch (err: any) {
+      console.error(err)
+      setLineItems(rows =>
+        rows.map((r, i) => (i === idx ? { ...r, isUpdating: false } : r))
+      )
+      setToast({
+        type: 'error',
+        message: `Failed to add new sales line: ${err.message}`,
+      })
+    }
+  }
+
   // Load line items on mount / No change
   useEffect(() => {
     if (!No) return
@@ -198,7 +295,9 @@ export default function RecordSalesForm({
     try {
       await submitForApproval(No)
       setToast({ type: 'success', message: 'Sent for approval' })
-      onClose()
+
+      // NEW: Delay closing the dialog to allow the user to see the success toast.
+      setTimeout(onClose, 3000)
     } catch (err: any) {
       console.error(err)
       setToast({ type: 'error', message: err.message || 'Approval failed' })
@@ -208,9 +307,23 @@ export default function RecordSalesForm({
   }
 
   return (
-    <Dialog open={!!No} onOpenChange={open => !open && onClose()}>
+    <Dialog open={!!No} onOpenChange={(open: boolean) => !open && onClose()}>
+      {toast && (
+        <div
+          className={`fixed top-4 right-4 z-[99] p-4 rounded-lg shadow-lg flex items-center gap-2 transition-all duration-300 ease-in-out transform
+          ${toast.type === 'success' ? 'bg-green-500 text-white' : 'bg-red-500 text-white'}
+          ${toast.type === 'success' ? 'animate-fade-in-down' : 'animate-fade-in-down'}`}
+        >
+          <Icon
+            icon={toast.type === 'success' ? 'tabler:circle-check-filled' : 'tabler:circle-x-filled'}
+            className="text-xl"
+          />
+          <span className="font-semibold">{toast.message}</span>
+        </div>
+      )}
+
       <form onSubmit={handleSubmit} className="flex flex-col h-full">
-        <DialogContent className="sm:max-w-fit max-h-[98vh] flex flex-col overflow-hidden">
+        <DialogContent className="sm:max-w-8xl max-h-[98vh] flex flex-col overflow-hidden">
           <DialogHeader>
             <DialogTitle>Sale No: {No}</DialogTitle>
             <DialogDescription>
@@ -218,20 +331,6 @@ export default function RecordSalesForm({
             </DialogDescription>
           </DialogHeader>
 
-          {/* Toast / Confirmation Banner */}
-          {toast && (
-            <div
-              className={`mx-4 mt-4 p-3 rounded border text-sm ${
-                toast.type === 'success'
-                  ? 'bg-green-50 border-green-200 text-green-800'
-                  : 'bg-red-50 border-red-200 text-red-800'
-              }`}
-            >
-              {toast.message}
-            </div>
-          )}
-
-          {/* Header info + Actions */}
           <div className="bg-white border-b px-4 py-4 sticky top-[3.5rem] z-20 flex justify-between">
             <div className="grid grid-cols-2 gap-4">
               <div>
@@ -286,8 +385,7 @@ export default function RecordSalesForm({
             </div>
           </div>
 
-          {/* Line Items Table */}
-          <div className="flex-1 overflow-y-auto px-4 py-2">
+          <div className="flex-1 overflow-y-auto overflow-x-auto px-4 py-2">
             <Card className="bg-transparent p-4">
               <Table className="w-full">
                 <TableCaption>Individual Sales Targets</TableCaption>
@@ -394,10 +492,20 @@ export default function RecordSalesForm({
                           />
                         ) : (
                           <div className="flex justify-center space-x-2">
-                            <Button variant="outline" size="sm">
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => handleAddEmptyLineAfter(idx)}
+                              disabled={isApproving}
+                            >
                               +
                             </Button>
-                            <Button variant="destructive" size="sm">
+                            <Button
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => handleDeleteLine(idx)}
+                              disabled={isApproving}
+                            >
                               ×
                             </Button>
                           </div>

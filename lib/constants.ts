@@ -1,3 +1,4 @@
+//lib/constants.ts
 import { Buffer } from 'buffer'
 
 /** Logo asset path */
